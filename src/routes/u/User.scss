@@ -1,0 +1,62 @@
+@import '~/_variables';
+
+main.profile {
+
+    display: flex;
+    justify-content: center;
+
+    .section {
+
+        background: $primary-dark;
+
+        flex: 0 0 80%;
+        display: flex;
+        flex-flow: column;
+
+        .head {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid $primary-light;
+        
+                .username {
+                    font-size: 2em;
+                    padding: 0.5em;
+                    color: $text-light;
+                    font-weight: normal;
+                    display: flex;
+                    align-self: center;
+
+                    .rating {
+                        display: flex;
+                        align-self: center;
+                        font-size: 0.82em;
+                        margin-left: 1em;
+                    }
+                }
+
+        
+                .tools {
+                    margin: 1em;
+
+                    button {
+                        user-select: none;
+                        cursor: pointer;
+
+                        padding: 0.4em;
+                        background: $error;
+                        color: $text-light;
+                        border: 1px solid $text-dark;
+
+                        &:active {
+                            text-decoration: underline;
+                        }
+                    }
+                }
+        }
+
+        .activity {
+
+            color: $text-light;
+        }
+    }
+}

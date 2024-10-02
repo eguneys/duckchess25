@@ -1,8 +1,9 @@
 import { Title } from "@solidjs/meta";
-import './Home.scss'
 import { createSignal, onCleanup, onMount, useContext } from "solid-js";
 import { SocketContext, SocketProvider } from "~/components/socket";
 
+import "~/app.scss";
+import './Home.scss'
 
 
 export default function Home() {

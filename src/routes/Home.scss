@@ -71,10 +71,15 @@ main.home {
                 padding: 1em;
                 flex: 0 0 40%;
 
+                transition: cubic-bezier(0.075, 0.82, 0.165, 1) .4s;
 
                 &:hover {
                     color: $primary;
                     background: $accent;
+                }
+
+                &:active {
+                    text-decoration: underline;
                 }
             }
         }

@@ -1,21 +1,44 @@
 import { MetaProvider, Title } from "@solidjs/meta";
-import { createAsync, Router } from "@solidjs/router";
+import { A, cache, createAsync, Router } from "@solidjs/router";
 import { FileRoutes } from "@solidjs/start/router";
 import { createEffect, Show, Suspense } from "solid-js";
-import "./app.scss";
 import { useSession } from "vinxi/http";
-import { create_user, user_by_id, new_user, User } from './routes/db'
+import { create_user, user_by_id, new_user, User, drop_user_by_id } from './routes/db'
+
+import "./app.scss";
 
 type UserSession = {
   user_id: string
 }
 
-export async function getUser(): Promise<User> {
+const getSession = async () => {
   "use server"
-  const session = await useSession<UserSession>({
+  return await useSession<UserSession>({
     password: process.env.SESSION_SECRET ?? 'secret_hash_key_placeholder_32_keys'
   })
+}
 
+export const resetUser = cache(async(): Promise<User> => {
+  "use server"
+  const session = await getSession()
+
+  const user_id = session.data.user_id
+  if (user_id) {
+    await drop_user_by_id(user_id)
+  } 
+
+
+  let user = create_user()
+
+  await new_user(user)
+  await session.update((d: UserSession) => ({ user_id: user.user_id }))
+  return user
+}, 'reset_user')
+
+export const getUser = cache(async (): Promise<User> => {
+  "use server"
+
+  const session = await getSession()
 
   const user_id = session.data.user_id
   let user: User | undefined
@@ -32,25 +55,17 @@ export async function getUser(): Promise<User> {
   await new_user(user)
   await session.update((d: UserSession) => ({ user_id: user.user_id }))
   return user
-}
+}, 'get_user')
 
 
 export default function App() {
-  const user = createAsync(() => getUser(), { deferStream: true })
 
   return (
     <Router
       root={props => (
         <MetaProvider>
           <Title>SolidStart - Basic</Title>
-          <nav>
-            <a class='logo' href="/">duckchess<span>.org</span></a>
-            <Suspense>
-              <Show when={user()}>{user =>
-                <a class='dasher' href="/">{user().username}</a>
-              }</Show>
-            </Suspense>
-          </nav>
+          <Nav/>
           <Suspense>{props.children}</Suspense>
         </MetaProvider>
       )}
@@ -58,4 +73,19 @@ export default function App() {
       <FileRoutes />
     </Router>
   );
+}
+
+const Nav = () => {
+  const user = createAsync(() => getUser(), { deferStream: true })
+
+  return (<>
+    <nav>
+      <a class='logo' href="/">duckchess<span>.org</span></a>
+      <Suspense>
+        <Show when={user()}>{user =>
+          <A class='dasher' href={`/u/${user().username}`}>{user().username}</A>
+        }</Show>
+      </Suspense>
+    </nav>
+  </>)
 }
