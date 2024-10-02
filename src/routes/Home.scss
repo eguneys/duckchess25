@@ -1,0 +1,117 @@
+@import '~/_variables';
+main.home {
+
+    display: grid;
+
+    grid-template-areas: 'counters lobby'
+        'create lobby'
+        'featured leaderboard';
+
+    grid-template-rows: 1em auto auto;
+    grid-template-columns: 1fr 1fr;
+    row-gap: 1em;
+    column-gap: 1em;
+
+    .counters {
+        grid-area: counters;
+    }
+
+    .lobby {
+        grid-area: lobby;
+    }
+
+    .create {
+        grid-area: create;
+    }
+
+
+    .featured {
+        grid-area: featured;
+    }
+
+
+    .leaderboard {
+        grid-area: leaderboard;
+    }
+
+    .counters {
+        display: flex;
+        gap: 1em;
+        justify-content: center;
+
+
+        span {
+            display: flex;
+            gap: 0.1em;
+
+            .bold {
+                font-weight: bold;
+            }
+        }
+    }
+
+    .create {
+        border: 1px solid $accent;
+        border-radius: 2px;
+        padding: 1em;
+
+        h2 {
+            font-weight: normal;
+            color: $text-dark;
+        }
+
+        .time-control {
+            display: flex;
+            flex-flow: row wrap;
+
+            span {
+                font-size: 1.2em;
+                user-select: none;
+                cursor: pointer;
+                padding: 1em;
+                flex: 0 0 40%;
+
+
+                &:hover {
+                    color: $primary;
+                    background: $accent;
+                }
+            }
+        }
+        button {
+            user-select: none;
+            cursor: pointer;
+            font-size: 1em;
+            color: $text-dark;
+            padding: 1em;
+            border: none;
+            background: $primary;
+
+            &:hover {
+                background: $primary-light;
+            }
+
+            &:active {
+                text-decoration: underline;
+            }
+        }
+    }
+
+
+    .lobby {
+        display: flex;
+        flex-flow: column;
+
+        h2 {
+            font-weight: normal;
+            color: $accent;
+            border: 1px solid $accent;
+            border-bottom: none;
+        }
+
+        .hooks {
+            border: 1px solid $accent;
+            flex: 1;
+        }
+    }
+}
