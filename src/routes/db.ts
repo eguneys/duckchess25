@@ -9,7 +9,7 @@ export type User = {
 }
 
 
-const gen_id = () => {
+export const gen_id = () => {
   return Math.random().toString(16).slice(8)
 }
 

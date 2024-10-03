@@ -5,6 +5,21 @@
   padding: 0;
 }
 
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #fefce3;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d7d75c;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #89886e;
+}
 
 body {
   font-family: Gordita, Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;

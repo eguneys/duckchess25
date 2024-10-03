@@ -15,7 +15,7 @@ class StrongSocket {
 
 
     private default_handlers: Handlers = { ng: () => {} }
-    private set_handlers: Handlers = {}
+    public set_handlers: Handlers = {}
 
     get handlers(): Handlers {
         return {...this.default_handlers, ...this.set_handlers }
@@ -27,7 +27,7 @@ class StrongSocket {
 
     ping_schedule?: NodeJS.Timeout
 
-    connect(handlers: Handlers) {
+    connect() {
        this.disconnect() 
 
         let ws = new WebSocket(this.href)
@@ -48,7 +48,6 @@ class StrongSocket {
             }
         }
         ws.onopen = () => {
-            this.set_handlers = handlers
             this.log('connected to: ' + this.href)
 
             this.ws = ws
@@ -117,11 +116,11 @@ export const SocketProvider = (props: { path: string, children: JSX.Element }) =
             socket.send(msg)
         },
         receive: (_handlers: Handlers) => {
-            handlers = _handlers
+            socket.set_handlers = { ...socket.set_handlers, ..._handlers }
         },
     }
     onMount(() => {
-        socket.connect(handlers)
+        socket.connect()
         onCleanup(() => {
             socket.destroy()
         })

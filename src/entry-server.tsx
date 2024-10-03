@@ -1,5 +1,6 @@
 // @refresh reload
 import { createHandler, StartServer } from "@solidjs/start/server";
+
 import { ws } from '~/ws'
 import type { IncomingMessage } from 'node:http'
 
@@ -8,7 +9,6 @@ const handleUpgrade = (request: IncomingMessage) =>
   ws.handleUpgrade(request, request.socket, emptyBuffer)
 
 export { handleUpgrade }
-
 
 export default createHandler(() => (
   <StartServer

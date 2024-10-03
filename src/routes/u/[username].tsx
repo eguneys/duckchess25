@@ -2,16 +2,11 @@ import { action, cache, createAsync, redirect, useAction, useParams } from "@sol
 import { Profile, profile_by_username } from "../db"
 import { Title } from "@solidjs/meta"
 import { createEffect, Show, Suspense, useContext } from "solid-js"
-import { getUser, resetUser } from '~/app'
 
+import "~/app.scss";
 import './User.scss'
 import { SocketContext, SocketProvider } from "~/components/socket"
-
-const getProfile = cache(async (username: string): Promise<Profile | undefined> => {
-  "use server"
-
-  return await profile_by_username(username)
-}, 'profile_by_username')
+import { getProfile, getUser, resetUser } from "~/session"
 
 export default function Home() {
   return (

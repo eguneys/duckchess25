@@ -1,4 +1,4 @@
-import { Peer } from "crossws"
+import { Peer } from "~/ws"
 
 export function peer_send(peer: Peer, data: any) {
     if (typeof data === 'string') {
@@ -13,15 +13,21 @@ export function peer_send(peer: Peer, data: any) {
 export interface IDispatch {
     join(): void,
     leave(): void,
-    message(_: any): void
+    message(_: any): Promise<void>
 }
 
 export abstract class Dispatch implements IDispatch {
+
+    get user() {
+        return this.peer.user
+    }
+
     constructor(readonly peer: Peer, readonly peers: Peer[], readonly on_peers_change: () => void) {}
 
     join() {
         this.peers.push(this.peer)
         this.on_peers_change()
+        this._join()
     }
 
     leave() {
@@ -30,12 +36,17 @@ export abstract class Dispatch implements IDispatch {
             this.peers.splice(i, 1)
         }
         this.on_peers_change()
+        this._leave()
     }
 
     publish(data: any) {
         this.peers.forEach(_ => peer_send(_, data))
     }
 
-    message(_: any) {}
+    async message(_: any) {}
+
+
+    _join() {}
+    _leave() {}
 }
 

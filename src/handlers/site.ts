@@ -1,4 +1,4 @@
-import { Peer } from "crossws";
+import { Peer } from "~/ws";
 import { Dispatch } from "./dispatch";
 
 export class Site extends Dispatch {

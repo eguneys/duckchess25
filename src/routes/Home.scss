@@ -7,7 +7,7 @@ main.home {
         'create lobby'
         'featured leaderboard';
 
-    grid-template-rows: 1em auto auto;
+    grid-template-rows: 1em 50vh auto;
     grid-template-columns: 1fr 1fr;
     row-gap: 1em;
     column-gap: 1em;
@@ -65,7 +65,7 @@ main.home {
             flex-flow: row wrap;
 
             span {
-                font-size: 1.2em;
+                font-size: 1.4em;
                 user-select: none;
                 cursor: pointer;
                 padding: 1em;
@@ -115,8 +115,51 @@ main.home {
         }
 
         .hooks {
+            overflow-y: auto;
             border: 1px solid $accent;
             flex: 1;
+
+            display: flex;
+            flex-flow: column;
+
+            table {
+                border-spacing: 0;
+                thead tr th {
+                    color: $text-dark;
+                    font-weight: normal;
+                }
+
+                tbody tr {
+                    user-select: none;
+                    cursor: pointer;
+                    color: $text;
+
+                    &.removed,
+                    &.removed:hover,
+                    &.removed.me,
+                    &.removed.me:hover {
+                        opacity: 0.7;
+                        background: $text;
+                        color: $text-dark;
+                    }
+
+                    &.me,
+                    &.me:hover {
+                        background: $light-green;
+                        color: $text-light;
+                    }
+
+                    &:hover {
+                        color: $text-light;
+                        background: $accent;
+                    }
+
+                    td {
+                        padding: 0.4em;
+                        border-bottom: 1px solid $text;
+                    }
+                }
+            }
         }
     }
 }

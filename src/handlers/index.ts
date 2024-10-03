@@ -1,7 +1,8 @@
 import { Site } from "./site"
 import { Lobby } from "./lobby"
-import { Peer } from "crossws"
 import { IDispatch } from "./dispatch"
+import { createAsync } from "@solidjs/router"
+import { Peer } from "~/ws"
 
 function nb_connected_msg() {
     return { t: 'n', d: nb_connected(), r: nb_games() }

@@ -13,15 +13,16 @@
     "@solidjs/router": "^0.14.7",
     "@solidjs/start": "^1.0.8",
     "better-sqlite3": "^11.3.0",
-    "crossws": "^0.3.1",
     "db0": "^0.1.4",
     "solid-js": "^1.9.1",
-    "vinxi": "^0.4.3"
+    "vinxi": "^0.4.3",
+    "ws": "^8.18.0"
   },
   "engines": {
     "node": ">=18"
   },
   "devDependencies": {
+    "@types/ws": "^8.5.12",
     "sass-embedded": "^1.79.4"
   }
 }
