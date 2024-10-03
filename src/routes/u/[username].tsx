@@ -1,7 +1,7 @@
-import { action, cache, createAsync, redirect, useAction, useParams } from "@solidjs/router"
+import { action, cache, createAsync, redirect, useAction, useBeforeLeave, useParams } from "@solidjs/router"
 import { Profile, profile_by_username } from "../db"
 import { Title } from "@solidjs/meta"
-import { createEffect, onCleanup, onMount, Show, Suspense, useContext } from "solid-js"
+import { createEffect, createSignal, on, onCleanup, onMount, Show, Suspense, useContext } from "solid-js"
 
 import "~/app.scss";
 import './User.scss'
@@ -11,14 +11,16 @@ import { getProfile, getUser, resetUser } from "~/session"
 export default function Home() {
     const params = useParams()
 
-    let { send, page, cleanup } = useContext(SocketContext)!
+    let { send, page, cleanup, reconnect } = useContext(SocketContext)!
     onMount(() => {
         page('site')
     })
 
-
     let profile = createAsync(() => getProfile(params.username))
     let user = createAsync(() => getUser())
+    createEffect(on(() => params.username, () => {
+        reconnect()
+    }, { defer: true }))
 
     let action_reset_profile = useAction(action(async() => {
         "use server"
