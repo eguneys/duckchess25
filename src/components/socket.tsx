@@ -4,24 +4,35 @@ type Handlers = Record<string, (d: any) => void>
 
 class StrongSocket {
 
-    static create = (path: string) => {
-        return new StrongSocket(path)
+    static create = () => {
+        return new StrongSocket()
     }
 
     get href() {
         let protocol = location.protocol === 'https' ? 'wss': 'ws'
-        return `${protocol}://${location.host}/_ws/${this.path}`
+        return `${protocol}://${location.host}/_ws`
     }
 
 
     private default_handlers: Handlers = { ng: () => {} }
-    public set_handlers: Handlers = {}
+    private page_handlers: Handlers = {}
 
-    get handlers(): Handlers {
-        return {...this.default_handlers, ...this.set_handlers }
+
+    add_page_handlers(_: Handlers) {
+        Object.assign(this.page_handlers, _)
     }
 
-    private constructor(readonly path: string) {}
+    remove_page_handlers(_: Handlers) {
+        for (let key of Object.keys(_)) {
+            delete this.page_handlers[key]
+        }
+    }
+
+    get handlers(): Handlers {
+        return {...this.default_handlers, ...this.page_handlers }
+    }
+
+    private constructor() {}
 
     ws?: WebSocket
 
@@ -53,6 +64,10 @@ class StrongSocket {
             this.ws = ws
             this.ping_now()
 
+            this.send_on_connect.forEach(_ => {
+                this.send(_)
+            })
+            this.send_on_connect = []
         }
         ws.onerror = e => this.on_error(e)
     }
@@ -88,11 +103,17 @@ class StrongSocket {
         this.schedulePing()
     }
 
+    send_on_connect: any[] = []
     send(msg: any) {
+        if (!this.ws) {
+            this.send_on_connect.push(msg)
+            return
+        }
+
         if (typeof msg === 'object') {
-            this.ws?.send(JSON.stringify(msg))
+            this.ws.send(JSON.stringify(msg))
         } else {
-          this.ws?.send(msg)
+          this.ws.send(msg)
         }
     }
 
@@ -103,21 +124,27 @@ class StrongSocket {
 }
 
 type Send = (_: any) => void
-type Recieve = (_: Handlers) => void
+type Receive = (_: Handlers) => void
 
-export const SocketContext = createContext<{ send: Send, receive: Recieve}>()
+export const SocketContext = createContext<{ send: Send, receive: Receive, cleanup: Receive, page: (path: string) => void }>()
 
 
-export const SocketProvider = (props: { path: string, children: JSX.Element }) => {
+export const SocketProvider = (props: { children: JSX.Element }) => {
     let handlers: Handlers = {}
-    let socket = StrongSocket.create(props.path)
+    let socket = StrongSocket.create()
     let value = {
         send: (msg: any) => {
             socket.send(msg)
         },
-        receive: (_handlers: Handlers) => {
-            socket.set_handlers = { ...socket.set_handlers, ..._handlers }
+        receive: (handlers: Handlers) => {
+            socket.add_page_handlers(handlers)
         },
+        cleanup: (handlers: Handlers) => {
+            socket.remove_page_handlers(handlers)
+        },
+        page: (path: string) => {
+            socket.send({ t: 'page', d: path })
+        }
     }
     onMount(() => {
         socket.connect()

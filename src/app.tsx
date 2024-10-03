@@ -6,6 +6,7 @@ import { getUser } from './session'
 import { User } from "./routes/db";
 
 import "./app.scss";
+import { SocketProvider } from "./components/socket";
 
 
 export default function App() {
@@ -14,9 +15,11 @@ export default function App() {
     <Router
       root={props => (
         <MetaProvider>
-          <Title>SolidStart - Basic</Title>
-          <Nav/>
-          <Suspense>{props.children}</Suspense>
+          <SocketProvider>
+            <Title>SolidStart - Basic</Title>
+            <Nav />
+            <Suspense>{props.children}</Suspense>
+          </SocketProvider>
         </MetaProvider>
       )}
     >

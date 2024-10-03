@@ -10,13 +10,11 @@ import { getUser } from "~/session";
 import { User } from "./db";
 
 export default function Home() {
-  return (
-  <SocketProvider path='lobby'>
-    <WithSocketConnect />
-  </SocketProvider>)
-}
 
-function WithSocketConnect() {
+  let { page, send, receive, cleanup } = useContext(SocketContext)!
+  onMount(() => {
+    page('lobby')
+  })
 
   const user = createAsync<User>(() => getUser(), { deferStream: true })
 
@@ -29,8 +27,11 @@ function WithSocketConnect() {
     }
   }
 
-  let { send, receive } = useContext(SocketContext)!
   receive(handlers)
+  onCleanup(() => {
+    cleanup(handlers)
+  })
+
 
   const on_create = (time_control: TimeControl) => {
     send({ t: 'hadd', d: time_control })
@@ -61,7 +62,7 @@ const clock_long = { tenzero: '10+0', threetwo: '3+2', fivefour: '5+4', twentyze
 
 const Lobby = (props: { me?: string }) => {
 
-  let { send, receive } = useContext(SocketContext)!
+  let { send, receive, cleanup } = useContext(SocketContext)!
 
   let [hooks, set_hooks] = createSignal<Hook[]>([], { equals: false })
   let [removed_hooks, set_removed_hooks] = createSignal<string[]>([], { equals: false })
@@ -97,6 +98,9 @@ const Lobby = (props: { me?: string }) => {
     }
   }
   receive(handlers)
+  onCleanup(() => {
+    cleanup(handlers)
+  })
 
   return (<div class='lobby'>
     <h2>Lobby</h2>

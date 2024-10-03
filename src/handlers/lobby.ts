@@ -57,8 +57,12 @@ export class Lobby extends Dispatch {
                     }
 
                     let p = await getProfile(this.user.username)
+                    if (!p) {
+                        this.peer.terminate()
+                        return
+                    }
 
-                    let hook = create_hook(username, p!.rating, msg.d)
+                    let hook = create_hook(username, p.rating, msg.d)
                     hooks.push(hook)
                     this.publish({ t: 'hadd', d: hook})
                 }

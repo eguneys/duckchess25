@@ -1,6 +1,6 @@
 import { IDispatch, peer_send } from './handlers/dispatch'
 import { dispatch_peer } from './handlers'
-import { getUser } from './session'
+import { getProfile, getSession, getUser } from './session'
 import type { IncomingMessage } from 'node:http'
 import type { Duplex } from 'node:stream'
 import { WebSocket as WebSocketT, WebSocketServer } from 'ws'
@@ -27,6 +27,12 @@ const ws = my_custom_ws_server({
             log_error(`[WS JSON Parse] ${err}`)
         }
         if (json) {
+            if (json.t === 'page') {
+                peer.dispatch.leave()
+                peer.dispatch = dispatch_peer(peer, json.d)
+                peer.dispatch.join()
+                return
+            }
             peer.dispatch.message(json)
         }
     },
@@ -60,11 +66,6 @@ function my_custom_ws_server (hooks: Hooks) {
 
     wss.on('connection', (ws, request) => {
         Peer.make(ws, request).then(peer => {
-
-            if (!peer) {
-                ws.terminate()
-                return
-            }
 
             hooks.open(peer)
 
@@ -102,11 +103,7 @@ export class Peer {
         let user = await getUser()
 
         let peer = new Peer(ws, request, user)
-        let dispatch = dispatch_peer(peer)
-        if (!dispatch) {
-            return undefined
-        }
-        peer.dispatch = dispatch
+        peer.dispatch = dispatch_peer(peer, '')
         return peer
     }
 

@@ -1,7 +1,7 @@
 import { action, cache, createAsync, redirect, useAction, useParams } from "@solidjs/router"
 import { Profile, profile_by_username } from "../db"
 import { Title } from "@solidjs/meta"
-import { createEffect, Show, Suspense, useContext } from "solid-js"
+import { createEffect, onCleanup, onMount, Show, Suspense, useContext } from "solid-js"
 
 import "~/app.scss";
 import './User.scss'
@@ -9,25 +9,13 @@ import { SocketContext, SocketProvider } from "~/components/socket"
 import { getProfile, getUser, resetUser } from "~/session"
 
 export default function Home() {
-  return (
-  <SocketProvider path='site'>
-    <WithSocketConnect />
-  </SocketProvider>)
-}
-
-
-
-const WithSocketConnect = () => {
-
-    let handlers = {}
-
-    let { send, receive } = useContext(SocketContext)!
-
-    receive(handlers)
-
-
-
     const params = useParams()
+
+    let { send, page, cleanup } = useContext(SocketContext)!
+    onMount(() => {
+        page('site')
+    })
+
 
     let profile = createAsync(() => getProfile(params.username))
     let user = createAsync(() => getUser())
@@ -35,7 +23,8 @@ const WithSocketConnect = () => {
     let action_reset_profile = useAction(action(async() => {
         "use server"
         let user = await resetUser()
-        throw redirect(`/u/${user.username}`, { revalidate: ['get_user']})
+
+        return redirect(`/u/${user.username}`, { revalidate: ['get_user']})
     }))
 
     return (<>

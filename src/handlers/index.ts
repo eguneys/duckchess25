@@ -21,20 +21,12 @@ export function debounce_publish_lobby() {
 }
 
 
-export function dispatch_peer(peer: Peer): IDispatch | undefined {
-    let parts = peer.request?.url?.split('/')
-
-    if (parts) {
-        let path = parts[parts.length - 1]
-
-        switch (path) {
-            case 'lobby':
-                return new Lobby(peer, debounce_publish_lobby)
-            case 'site':
-                return new Site(peer, debounce_publish_lobby)
-        }
+export function dispatch_peer(peer: Peer, path: string): IDispatch {
+    switch (path) {
+        case 'lobby':
+            return new Lobby(peer, debounce_publish_lobby)
+        default:
+            return new Site(peer, debounce_publish_lobby)
     }
-    peer.terminate()
-    return undefined
 }
 
