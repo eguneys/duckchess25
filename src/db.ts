@@ -6,7 +6,7 @@ import { DuckChess } from 'duckops'
 import Database from 'better-sqlite3'
 
 
-const db = new Database('data/foobar.db')
+const db = new Database('.data/foobar.db')
 db.pragma('journal_mode = WAL')
 
 

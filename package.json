@@ -15,7 +15,9 @@
     "better-sqlite3": "^11.3.0",
     "solid-js": "^1.9.1",
     "vinxi": "^0.4.3",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "duckops": "link://../duckops",
+    "duckground": "link://../duckground"
   },
   "engines": {
     "node": ">=18"

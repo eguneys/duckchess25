@@ -23,6 +23,12 @@ importers:
       better-sqlite3:
         specifier: ^11.3.0
         version: 11.3.0
+      duckground:
+        specifier: link://../duckground
+        version: link:../duckground
+      duckops:
+        specifier: link://../duckops
+        version: link:../duckops
       solid-js:
         specifier: ^1.9.1
         version: 1.9.1
