@@ -1,5 +1,5 @@
 import { action, cache, createAsync, redirect, useAction, useBeforeLeave, useParams } from "@solidjs/router"
-import { Profile, profile_by_username } from "../db"
+import { Profile, profile_by_username } from "../../db"
 import { Title } from "@solidjs/meta"
 import { createEffect, createSignal, on, onCleanup, onMount, Show, Suspense, useContext } from "solid-js"
 

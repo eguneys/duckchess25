@@ -4,7 +4,7 @@ import { getProfile, getSession, getUser } from './session'
 import type { IncomingMessage } from 'node:http'
 import type { Duplex } from 'node:stream'
 import { WebSocket as WebSocketT, WebSocketServer } from 'ws'
-import { User } from './routes/db'
+import { User } from './db'
 
 function log_error(str: string) {
     console.error(str)

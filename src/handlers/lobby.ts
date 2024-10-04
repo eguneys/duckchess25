@@ -1,11 +1,9 @@
 import { Dispatch, peer_send } from "./dispatch";
-import { gen_id, User } from "~/routes/db";
+import { create_game, gen_id, new_game, User, user_by_username } from "~/db";
 import { getProfile } from "~/session";
+import { time_controls, TimeControl } from "~/types";
 import { Peer } from "~/ws";
 
-export type TimeControl = 'threetwo' | 'fivefour' | 'tenzero' | 'twentyzero'
-
-export const time_controls = ['threetwo', 'fivefour', 'tenzero', 'twentyzero']
 
 export type Hook = {
     id: string,
@@ -73,9 +71,23 @@ export class Lobby extends Dispatch {
                     let h = hooks[i]
 
                     if (h.u === username) {
-                        let h = hooks.splice(i, 1)[0]
+                        hooks.splice(i, 1)[0]
                         this.publish({ t: 'hrem', d: [h.id] })
                     } else {
+                        let hu = await user_by_username(h.u)
+                        let white = this.user.user_id
+                        let black = hu.user_id
+                        if (Math.random() < 0.5) {
+                            [white, black] = [black, white]
+                        }
+                        let game = create_game(white, black, h.clock)
+                        await new_game(game)
+
+                        this.publish_users({ t: 'game_redirect', d: game.id }, [white, black])
+
+
+                        hooks.splice(i, 1)[0]
+                        this.publish({ t: 'hrem', d: [h.id] })
 
                     }
                 }

@@ -3,7 +3,7 @@ import { A, cache, createAsync, Router } from "@solidjs/router";
 import { FileRoutes } from "@solidjs/start/router";
 import { createEffect, Show, Suspense, useContext } from "solid-js";
 import { getUser } from './session'
-import { User } from "./routes/db";
+import { User } from "./db";
 
 import "./app.scss";
 import { SocketProvider } from "./components/socket";

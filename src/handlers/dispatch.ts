@@ -1,3 +1,4 @@
+import { UserId } from "~/types"
 import { Peer } from "~/ws"
 
 export function peer_send(peer: Peer, data: any) {
@@ -41,6 +42,13 @@ export abstract class Dispatch implements IDispatch {
 
     publish(data: any) {
         this.peers.forEach(_ => peer_send(_, data))
+    }
+
+
+    publish_users(data: any, users: UserId[]) {
+        this.peers
+        .filter(_ => users.includes(_.user.user_id))
+        .forEach(_ => peer_send(_, data))
     }
 
     async message(_: any) {}

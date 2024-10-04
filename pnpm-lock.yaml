@@ -23,9 +23,6 @@ importers:
       better-sqlite3:
         specifier: ^11.3.0
         version: 11.3.0
-      db0:
-        specifier: ^0.1.4
-        version: 0.1.4(better-sqlite3@11.3.0)
       solid-js:
         specifier: ^1.9.1
         version: 1.9.1
@@ -36,6 +33,9 @@ importers:
         specifier: ^8.18.0
         version: 8.18.0
     devDependencies:
+      '@types/better-sqlite3':
+        specifier: ^7.6.11
+        version: 7.6.11
       '@types/ws':
         specifier: ^8.5.12
         version: 8.5.12
@@ -777,6 +777,9 @@ packages:
 
   '@types/babel__traverse@7.20.6':
     resolution: {integrity: sha512-r1bzfrm0tomOI8g1SzvCaQHo6Lcv6zu0EA+W2kHrt8dyrHQxGzBBL4kdkzIS+jBMV+EYcMAEAqXqYaLJq5rOZg==}
+
+  '@types/better-sqlite3@7.6.11':
+    resolution: {integrity: sha512-i8KcD3PgGtGBLl3+mMYA8PdKkButvPyARxA7IQAd6qeslht13qxb1zzO8dRCtE7U3IoJS782zDBAeoKiM695kg==}
 
   '@types/braces@3.0.4':
     resolution: {integrity: sha512-0WR3b8eaISjEW7RpZnclONaLFDf7buaowRHdqLp4vLj54AsSAYWfh3DRbfiYJY9XDxMgx1B4sE1Afw2PGpuHOA==}
@@ -3400,6 +3403,10 @@ snapshots:
   '@types/babel__traverse@7.20.6':
     dependencies:
       '@babel/types': 7.25.6
+
+  '@types/better-sqlite3@7.6.11':
+    dependencies:
+      '@types/node': 22.7.4
 
   '@types/braces@3.0.4': {}
 

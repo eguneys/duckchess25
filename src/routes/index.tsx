@@ -4,10 +4,11 @@ import { SocketContext, SocketProvider } from "~/components/socket";
 
 import "~/app.scss";
 import './Home.scss'
-import { Hook, TimeControl } from "~/handlers/lobby";
+import { Hook } from "~/handlers/lobby";
 import { createAsync } from "@solidjs/router";
 import { getUser } from "~/session";
-import { User } from "./db";
+import { User } from "../db";
+import { TimeControl } from "~/types";
 
 export default function Home() {
 
@@ -58,7 +59,7 @@ const Counters = (props: { ng: [number, number] }) => {
     </div>)
 }
 
-const clock_long = { tenzero: '10+0', threetwo: '3+2', fivefour: '5+4', twentyzero: '20+0'}
+const clock_long: Record<TimeControl, string> = { tenzero: '10+0', threetwo: '3+2', fivefour: '5+4', twentyzero: '20+0'}
 
 const Lobby = (props: { me?: string }) => {
 
