@@ -74,9 +74,17 @@ export class Lobby extends Dispatch {
                         hooks.splice(i, 1)[0]
                         this.publish({ t: 'hrem', d: [h.id] })
                     } else {
+
+                        hooks.splice(i, 1)[0]
+                        this.publish({ t: 'hrem', d: [h.id] })
+
                         let hu = await user_by_username(h.u)
-                        let white = this.user.user_id
-                        let black = hu.user_id
+
+                        if (!hu) {
+                            return
+                        }
+                        let white = this.user.id
+                        let black = hu.id
                         if (Math.random() < 0.5) {
                             [white, black] = [black, white]
                         }
@@ -84,10 +92,6 @@ export class Lobby extends Dispatch {
                         await new_game(game)
 
                         this.publish_users({ t: 'game_redirect', d: game.id }, [white, black])
-
-
-                        hooks.splice(i, 1)[0]
-                        this.publish({ t: 'hrem', d: [h.id] })
 
                     }
                 }

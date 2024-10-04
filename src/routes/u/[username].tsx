@@ -35,7 +35,9 @@ export default function Home() {
 
             <div class='section'>
                 <Suspense>
-                    <Show when={profile()}>{profile =>
+                    <Show when={profile()} fallback={
+                        <button onClick={() => action_reset_profile()}>Reset Profile</button>
+                    }>{profile =>
                         <>
                             <div class='head'>
                                 <div class='username'>{params.username}

@@ -24,13 +24,13 @@ export type Game = {
 }
 
 export type User = {
-  user_id: UserId,
+  id: UserId,
   username: string,
   lichess_token: string | null,
 }
 
 export type Profile = {
-  profile_id: ProfileId,
+  id: ProfileId,
   user_id: UserId,
   rating: number,
   nb_games: number
@@ -66,7 +66,7 @@ export const create_user = async (): Promise<User> => {
     username = username + gen_id().slice(0, 2)
   }
   return {
-    user_id: gen_id(),
+    id: gen_id(),
     username,
     lichess_token: null
   }
@@ -74,19 +74,16 @@ export const create_user = async (): Promise<User> => {
 
 export const create_profile = (user: User) => {
   return {
-    profile_id: gen_id(),
-    user_id: user.user_id,
+    id: gen_id(),
+    user_id: user.id,
     rating: 1500,
     nb_games: 0
   }
 }
 
 async function create_databases() {
-
-
-
   const create_users = `CREATE TABLE IF NOT EXISTS users ("id" TEXT PRIMARY KEY, "username" TEXT, "lichess_token" TEXT)`
-  const create_profiles = `CREATE TABLE IF NOT EXISTS profiles ("profile_id" TEXT PRIMARY KEY, "user_id" TEXT, "rating" NUMBER, "nb_games" NUMBER)`
+  const create_profiles = `CREATE TABLE IF NOT EXISTS profiles ("id" TEXT PRIMARY KEY, "user_id" TEXT, "rating" NUMBER, "nb_games" NUMBER)`
   const create_games = `CREATE TABLE IF NOT EXISTS games (
   "id" TEXT PRIMARY KEY, 
   "white" TEXT, 
@@ -102,6 +99,7 @@ async function create_databases() {
   db.prepare(create_users).run()
   db.prepare(create_profiles).run()
   db.prepare(create_games).run()
+  console.log('tables created')
 }
 
 create_databases()
@@ -124,7 +122,7 @@ export async function game_by_id(game_id: string) {
 
 export async function new_user(user: User) {
     await db.prepare(`INSERT INTO users VALUES 
-      (@user_id, @username, @lichess_token)`).run(user)
+      (@id, @username, @lichess_token)`).run(user)
     await new_profile(create_profile(user))
 }
 
@@ -148,7 +146,7 @@ export async function drop_user_by_id(user_id: string) {
 
 async function new_profile(profile: Profile) {
     db.prepare(`INSERT INTO profiles VALUES (
-      @profile_id, 
+      @id, 
       @user_id, 
       @rating, 
       @nb_games)`).run(profile)

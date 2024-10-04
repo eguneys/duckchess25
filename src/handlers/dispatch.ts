@@ -47,7 +47,7 @@ export abstract class Dispatch implements IDispatch {
 
     publish_users(data: any, users: UserId[]) {
         this.peers
-        .filter(_ => users.includes(_.user.user_id))
+        .filter(_ => users.includes(_.user.id))
         .forEach(_ => peer_send(_, data))
     }
 

@@ -1,0 +1,95 @@
+.duckboard {
+    user-select: none;
+    cursor: pointer;
+    aspect-ratio: 1;
+    height: 90vh;
+    border-radius: 4px;
+
+    position: relative;
+    display: grid;
+    grid-template-areas: 'pieces ranks'
+    'files .';
+
+    grid-template-rows: auto 1em;
+    grid-template-columns: auto 1em;
+}
+
+.files {
+    grid-area: files;
+}
+
+.ranks {
+    grid-area: ranks;
+}
+
+.pieces {
+    grid-area: pieces;
+}
+
+.pieces {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('/green-plastic.png');
+    background-size: cover;
+}
+
+.ranks{
+    display: flex;
+    flex-flow: column;
+    align-items: center;
+
+    & .rank {
+        display: flex;
+        align-items: center;
+        flex: 1 0 0;
+    }
+}
+
+.files {
+    display: flex;
+
+    & .file {
+        text-align: center;
+        flex: 1 0 0;
+    }
+}
+
+
+.pieces {
+    position: relative;
+
+    .piece, .square {
+        pointer-events: none;
+        position: absolute;
+        width: calc(100%/8);
+        height: calc(100%/8);
+        background-size: cover;
+    }
+
+    .piece.ghost {
+        opacity: 0.3;
+    }
+
+    .square.dest {
+        background: radial-gradient(rgba(20, 85, 30, 0.5) 19%, rgba(0, 0, 0, 0) 20%);
+        pointer-events: auto;
+
+        &:hover {
+            background: rgba(20, 85, 30, .3);
+        }
+    }
+
+
+    .square.selected {
+        background: rgba(20, 85, 30, .4);
+    }
+
+    .square.last-move {
+        background: rgba(0,155,199,.41);
+    }
+
+
+}

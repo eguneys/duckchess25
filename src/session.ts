@@ -2,7 +2,7 @@ import { cache } from "@solidjs/router";
 import { useSession } from "vinxi/http";
 import { game_by_id, create_user, drop_user_by_id, new_user, Profile, profile_by_username, User, user_by_id, Game } from "./db";
 import { Board_decode, GameId, Player, Pov, UserId } from "./types";
-import { Board, DuckChess } from "duckops";
+import { Board, DuckChess, makeFen } from "duckops";
 
 export type UserSession = {
   user_id: string
@@ -28,7 +28,7 @@ export const resetUser = cache(async(): Promise<User> => {
   let user = await create_user()
 
   await new_user(user)
-  await session.update((d: UserSession) => ({ user_id: user.user_id }))
+  await session.update((d: UserSession) => ({ user_id: user.id }))
   return user
 }, 'reset_user')
 
@@ -49,7 +49,7 @@ export const getUser = cache(async (): Promise<User> => {
   user = await create_user()
 
   await new_user(user)
-  await session.update((d: UserSession) => ({ user_id: user.user_id }))
+  await session.update((d: UserSession) => ({ user_id: user.id }))
   return user
 }, 'get_user')
 
@@ -97,9 +97,11 @@ export const getPov = cache(async (id: GameId, user_id: UserId): Promise<Pov | u
     g.rule50_ply,
     g.cycle_length)
 
+  let fen = makeFen(duckchess.toSetup())
+
   let game = {
     id,
-    duckchess,
+    fen,
     sans: g.sans.split('')
   }
 

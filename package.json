@@ -8,16 +8,17 @@
     "version": "vinxi version"
   },
   "dependencies": {
+    "@solid-primitives/event-listener": "^2.3.3",
+    "@solid-primitives/raf": "^2.2.0",
     "@solid-primitives/scheduled": "^1.4.3",
     "@solidjs/meta": "^0.29.4",
     "@solidjs/router": "^0.14.7",
     "@solidjs/start": "^1.0.8",
     "better-sqlite3": "^11.3.0",
+    "duckops": "link://../duckops",
     "solid-js": "^1.9.1",
     "vinxi": "^0.4.3",
-    "ws": "^8.18.0",
-    "duckops": "link://../duckops",
-    "duckground": "link://../duckground"
+    "ws": "^8.18.0"
   },
   "engines": {
     "node": ">=18"
