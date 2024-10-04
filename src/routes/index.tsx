@@ -5,7 +5,7 @@ import { SocketContext, SocketProvider } from "~/components/socket";
 import "~/app.scss";
 import './Home.scss'
 import { Hook } from "~/handlers/lobby";
-import { createAsync } from "@solidjs/router";
+import { createAsync, redirect, useNavigate } from "@solidjs/router";
 import { getUser } from "~/session";
 import { User } from "../db";
 import { TimeControl } from "~/types";
@@ -21,8 +21,12 @@ export default function Home() {
 
   let [ng, set_ng] = createSignal<[number, number]>([0, 0])
 
+  const navigate = useNavigate()
 
   let handlers = {
+    game_redirect(d: number) {
+      navigate(`${d}`)
+    },
     ng({ d, r}: { d: number, r: number }) {
       set_ng([d, r])
     }
