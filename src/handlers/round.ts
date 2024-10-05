@@ -1,9 +1,10 @@
 import { Peer } from "~/ws";
 import { Dispatch, peer_send } from "./dispatch";
 import { getGame, getPov } from "~/session";
-import { Board, DuckChess, GameResult, makeSan, parseFen, parseSan, parseUci, PositionHistory } from "duckops";
+import { Board, DuckChess, GameResult, makeFen, makeSan, parseFen, parseSan, parseUci, PositionHistory } from "duckops";
 import { DbGame, make_game_move } from "~/db";
 import { Board_encode, GameStatus } from "~/types";
+import { revalidate } from "@solidjs/router";
 
 const history_step_builder = (sans: string[]) => {
     let dd = DuckChess.default()
@@ -17,6 +18,7 @@ const history_step_builder = (sans: string[]) => {
         history.append(s)
         return history.last()
     }, history.last())
+    console.log(sans, history)
     return history
 }
 
@@ -111,9 +113,12 @@ export class Round extends Dispatch {
 
                 let san = makeSan(g, move)
                 let board = Board_encode(history.last().board)
-                let sans = pov.game.sans + san
+                pov.game.sans.push(san)
+                let sans = pov.game.sans.join(' ')
 
-                make_game_move({ id: this.game_id, board, status, sans })
+                await make_game_move({ id: this.game_id, board, status, sans })
+
+                revalidate(['get_game', 'get_pov'])
 
                 this.publish_peers({ t: 'move', d: uci })
             }

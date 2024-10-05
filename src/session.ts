@@ -102,7 +102,7 @@ export const getPov = cache(async (id: GameId, user_id: UserId): Promise<Pov | u
   let game = {
     id,
     fen,
-    sans: g.sans.split(''),
+    sans: g.sans === '' ?  [] : g.sans.split(' '),
     status: g.status
   }
 
