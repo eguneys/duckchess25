@@ -1,7 +1,11 @@
-import { createContext, JSX, onCleanup, onMount } from "solid-js";
+import { createContext, createSignal, JSX, onCleanup, onMount } from "solid-js";
 
 type Handlers = Record<string, (d: any) => void>
 
+const pingDelay = 2500
+const pongTimeout = 9000
+
+/* https://github.com/lichess-org/lila/blob/master/ui/common/src/socket.ts */
 class StrongSocket {
 
     static create = () => {
@@ -37,9 +41,18 @@ class StrongSocket {
     ws?: WebSocket
 
     ping_schedule?: NodeJS.Timeout
+    connect_schedule?: NodeJS.Timeout
+
+    _is_offline = createSignal(true)
+
+    set_page_on_connect?: any
+
+    get is_offline() {
+        return this._is_offline[0]()
+    }
 
     connect() {
-       this.disconnect() 
+        this.destroy()
 
         let ws = new WebSocket(this.href)
 
@@ -60,20 +73,32 @@ class StrongSocket {
         }
         ws.onopen = () => {
             this.log('connected to: ' + this.href)
-
             this.ws = ws
-            this.ping_now()
-
-            this.send_on_connect.forEach(_ => {
-                this.send(_)
-            })
-            this.send_on_connect = []
+            this.ws_ready_to_send = false
         }
         ws.onerror = e => this.on_error(e)
+        this.scheduleConnect()
+    }
+
+    ws_ready_to_send = false
+
+    ready_to_send() {
+
+        if (this.set_page_on_connect) {
+            this.send(this.set_page_on_connect)
+        }
+
+        this.send_on_connect.forEach(_ => {
+            this.send(_)
+        })
+        this.send_on_connect = []
+
+
+        this._is_offline[1](false)
     }
 
     on_error = (e: Event) => {
-        this.log(`error: ${e}`)
+        this.log(`error: ${e} ${JSON.stringify(e)}`)
     }
 
     destroy = () => {
@@ -91,21 +116,40 @@ class StrongSocket {
 
     ping_now = () => {
         clearTimeout(this.ping_schedule)
+        clearTimeout(this.connect_schedule)
         this.send('ping')
+
+        this.scheduleConnect()
+    }
+
+    scheduleConnect = (delay: number = pongTimeout) => {
+        clearTimeout(this.ping_schedule)
+        clearTimeout(this.connect_schedule)
+
+        this.connect_schedule = setTimeout(() => {
+            this._is_offline[1](true)
+            this.connect()
+        }, delay)
     }
 
     schedulePing() {
         clearTimeout(this.ping_schedule)
-        this.ping_schedule = setTimeout(this.ping_now, 4000)
+        this.ping_schedule = setTimeout(this.ping_now, pingDelay)
     }
 
     pong = () => {
+        clearTimeout(this.connect_schedule)
         this.schedulePing()
+        if (!this.ws_ready_to_send) {
+            this.ws_ready_to_send = true
+
+            this.ready_to_send()
+        }
     }
 
     send_on_connect: any[] = []
     send(msg: any) {
-        if (!this.ws) {
+        if (!this.ws || this.ws.readyState === WebSocket.CONNECTING) {
             this.send_on_connect.push(msg)
             return
         }
@@ -126,7 +170,7 @@ class StrongSocket {
 type Send = (_: any) => void
 type Receive = (_: Handlers) => void
 
-export const SocketContext = createContext<{ send: Send, receive: Receive, cleanup: Receive, page: (path: string, params?: string) => void, reconnect: () => void }>()
+export const SocketContext = createContext<{ send: Send, receive: Receive, cleanup: Receive, page: (path: string, params?: string) => void, reconnect: () => void, is_offline: () => boolean }>()
 
 
 export const SocketProvider = (props: { children: JSX.Element }) => {
@@ -143,11 +187,16 @@ export const SocketProvider = (props: { children: JSX.Element }) => {
             socket.remove_page_handlers(handlers)
         },
         page: (path: string, params?: string) => {
-            socket.send({ t: 'page', d: { path, params } })
+            let p = { t: 'page', d: { path, params } }
+            socket.set_page_on_connect = p
+            socket.send(p)
         },
         reconnect() {
             socket.disconnect()
             socket.connect()
+        },
+        is_offline() {
+            return socket.is_offline
         }
     }
     onMount(() => {

@@ -94,3 +94,43 @@ nav {
 main {
   padding: 1em;
 }
+
+
+#network-status {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  padding: 0 1rem;
+  background: $c-bad;
+  color: $text-light;
+  font-size: 1.2em;
+  font-weight: bold;
+  height: 2.5rem;
+  border-top-right-radius: 3px;
+  transform: translateY(2.5rem);
+}
+
+#network-status.online {
+  background: $c-good;
+  animation: online 2.5s backwards;
+}
+
+#network-status.offline {
+  transform: translateY(0);
+}
+
+
+@keyframes online {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(2.5rem);
+  }
+}
+
+#network-status {
+  display: flex;
+  flex-flow: row;
+  align-items: center;
+}

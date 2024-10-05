@@ -1,12 +1,12 @@
 import { MetaProvider, Title } from "@solidjs/meta";
-import { A, cache, createAsync, Router } from "@solidjs/router";
+import { A, cache, createAsync, reload, Router, useNavigate } from "@solidjs/router";
 import { FileRoutes } from "@solidjs/start/router";
 import { createEffect, Show, Suspense, useContext } from "solid-js";
 import { getUser } from './session'
 import { User } from "./db";
 
 import "./app.scss";
-import { SocketProvider } from "./components/socket";
+import { SocketContext, SocketProvider } from "./components/socket";
 
 
 export default function App() {
@@ -19,6 +19,7 @@ export default function App() {
             <Title>SolidStart - Basic</Title>
             <Nav />
             <Suspense>{props.children}</Suspense>
+            <SocketStatus/>
           </SocketProvider>
         </MetaProvider>
       )}
@@ -26,6 +27,15 @@ export default function App() {
       <FileRoutes />
     </Router>
   );
+}
+
+const SocketStatus = () => {
+
+  const { is_offline } = useContext(SocketContext)!
+
+  return (
+  <a id="network-status" class={is_offline() ? ' offline' : ' online'} onClick={() => {reload()}}> 
+  <Show when={is_offline()} fallback={<>Online</>}>Offline</Show></a>)
 }
 
 const Nav = () => {

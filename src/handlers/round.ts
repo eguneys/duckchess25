@@ -18,7 +18,6 @@ const history_step_builder = (sans: string[]) => {
         history.append(s)
         return history.last()
     }, history.last())
-    console.log(sans, history)
     return history
 }
 
@@ -26,7 +25,7 @@ export class Round extends Dispatch {
 
     static peers: Peer[] = []
 
-    constructor(peer: Peer, on_peers_change: () => void, readonly params: string) { super(peer, Round.peers, on_peers_change) }
+    constructor(peer: Peer, on_peers_change: () => void, readonly params: string) { super('round', peer, Round.peers, on_peers_change) }
 
 
     get game_id() {

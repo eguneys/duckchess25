@@ -26,7 +26,7 @@ export class Lobby extends Dispatch {
         Lobby.peers.forEach(_ => peer_send(_, msg))
     }
 
-    constructor(peer: Peer, on_peers_change: () => void) { super(peer, Lobby.peers, on_peers_change) }
+    constructor(peer: Peer, on_peers_change: () => void) { super('lobby', peer, Lobby.peers, on_peers_change) }
 
     _leave() {
         let r = Lobby.hooks.filter(_ => _.u === this.user.username)

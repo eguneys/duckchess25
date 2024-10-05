@@ -15,6 +15,9 @@ const ws = my_custom_ws_server({
     open(peer) {
         peer.dispatch.join()
     },
+    ready_to_accept(peer) {
+        peer_send(peer, 0)
+    },
     message(peer, message) {
         if (message === 'ping') {
             peer_send(peer, 0)
@@ -40,7 +43,7 @@ const ws = my_custom_ws_server({
         peer.dispatch.leave()
     },
     error(peer, error) {
-        log_error(`[WS Error]: ${peer.request.url} ${error}`)
+        log_error(`[WS Error]: ${peer.dispatch.path} ${peer.user.username} ${error}`)
     },
     upgrade() {
     }
@@ -54,7 +57,8 @@ type Hooks = {
     message(peer: Peer, message: Message): void,
     close(peer: Peer, code: number, reason: string): void,
     error(peer: Peer, error: Error): void,
-    upgrade(request: IncomingMessage): void
+    upgrade(request: IncomingMessage): void,
+    ready_to_accept(peer: Peer): void,
 }
 
 function my_custom_ws_server (hooks: Hooks) {
@@ -65,7 +69,7 @@ function my_custom_ws_server (hooks: Hooks) {
         })
 
     wss.on('connection', (ws, request) => {
-        Peer.make(ws, request).then(peer => {
+        Peer.make(ws).then(peer => {
 
             hooks.open(peer)
 
@@ -80,6 +84,8 @@ function my_custom_ws_server (hooks: Hooks) {
             ws.on('close', (code: number, reason: Buffer) => {
                 hooks.close(peer, code, reason.toString())
             })
+
+            hooks.ready_to_accept(peer)
         })
     })
 
@@ -98,20 +104,18 @@ type Message = string
 
 export class Peer {
 
-    static make = async (ws: WebSocketT, request: IncomingMessage) => {
+    static make = async (ws: WebSocketT) => {
 
         let user = await getUser()
 
-        let peer = new Peer(ws, request, user)
+        let peer = new Peer(ws, user)
         peer.dispatch = dispatch_peer(peer, {path: ''})
         return peer
     }
 
     dispatch!: IDispatch
 
-    constructor(readonly ws: WebSocketT, 
-        readonly request: IncomingMessage, 
-        readonly user: User) {}
+    constructor(readonly ws: WebSocketT, readonly user: User) {}
 
 
     send(data: string) {

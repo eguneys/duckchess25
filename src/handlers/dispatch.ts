@@ -12,6 +12,7 @@ export function peer_send(peer: Peer, data: any) {
 
 
 export interface IDispatch {
+    path: string,
     join(): void,
     leave(): void,
     message(_: any): Promise<void>
@@ -23,7 +24,7 @@ export abstract class Dispatch implements IDispatch {
         return this.peer.user
     }
 
-    constructor(readonly peer: Peer, readonly peers: Peer[], readonly on_peers_change: () => void) {}
+    constructor(readonly path: string, readonly peer: Peer, readonly peers: Peer[], readonly on_peers_change: () => void) {}
 
     join() {
         this.peers.push(this.peer)
