@@ -66,9 +66,6 @@ function PovView(props: { pov: Pov }) {
   const player = createMemo(() => pov().player)
   const orientation = createMemo(() => player().color)
 
-  createEffect(() => {
-    console.log(pov().game.sans)
-  })
   return (<>
     <main>
         <Title>Play </Title>

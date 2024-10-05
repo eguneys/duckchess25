@@ -126,6 +126,9 @@ type DbGameMoveUpdate = {
 export async function make_game_move(u: DbGameMoveUpdate) {
   db.prepare(`UPDATE games SET status = @status, board = @board, sans = @sans WHERE games.id = @id`).run(u)
 
+
+  console.log('in db', u.id, u.sans, db.prepare(`SELECT sans from games where id = ?`).get(u.id))
+
 }
 
 
