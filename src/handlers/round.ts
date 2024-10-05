@@ -117,7 +117,8 @@ export class Round extends Dispatch {
 
                 await make_game_move({ id: this.game_id, board, status, sans })
 
-                await revalidate([getGame.keyFor(this.game_id), getPov.keyFor(this.game_id, this.user.id)])
+                await revalidate(getGame.keyFor(this.game_id), true)
+                await revalidate(getPov.keyFor(this.game_id, this.user.id), true)
 
                 let asdf = await getGame(this.game_id)
                 console.log(getGame.keyFor(this.game_id), ' after revalidate', this.game_id, 'sans', asdf!.sans)
