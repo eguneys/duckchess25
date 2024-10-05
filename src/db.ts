@@ -1,7 +1,7 @@
 "use server"
 import { generate_username } from "./gen"
 import { Board_encode, GameId, GameStatus, ProfileId, TimeControl, UserId } from './types'
-import { DuckChess } from 'duckops'
+import { Board, DuckChess } from 'duckops'
 
 import Database from 'better-sqlite3'
 
@@ -11,7 +11,7 @@ db.pragma('journal_mode = WAL')
 
 
 
-export type Game = {
+export type DbGame = {
   id: GameId,
   white: UserId,
   black: UserId,
@@ -43,7 +43,7 @@ export const gen_id = () => {
   return Math.random().toString(16).slice(8)
 }
 
-export const create_game = (white: UserId, black: UserId, clock: TimeControl): Game => {
+export const create_game = (white: UserId, black: UserId, clock: TimeControl): DbGame => {
   let d = DuckChess.default()
 
 
@@ -106,18 +106,27 @@ create_databases()
 
 
 
-export async function new_game(game: Game) {
+export async function new_game(game: DbGame) {
     await db.prepare(`INSERT INTO games VALUES (
       @id, @white, @black, @status,
       @cycle_length, @rule50_ply, $board, @sans)`).run(game)
 }
 
 export async function game_by_id(game_id: string) {
-    let rows = await db.prepare<GameId, Game>(`SELECT * from games WHERE id = ?`).get(game_id)
+    let rows = await db.prepare<GameId, DbGame>(`SELECT * from games WHERE id = ?`).get(game_id)
     return rows
 }
 
+type DbGameMoveUpdate = {
+  id: string
+  board: Buffer,
+  sans: string,
+  status: GameStatus
+}
+export async function make_game_move(u: DbGameMoveUpdate) {
+  db.prepare(`UPDATE games SET status = @status, board = @board, sans = @sans WHERE games.id = @id`).run(u)
 
+}
 
 
 export async function new_user(user: User) {

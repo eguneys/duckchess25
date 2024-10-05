@@ -126,7 +126,7 @@ class StrongSocket {
 type Send = (_: any) => void
 type Receive = (_: Handlers) => void
 
-export const SocketContext = createContext<{ send: Send, receive: Receive, cleanup: Receive, page: (path: string) => void, reconnect: () => void }>()
+export const SocketContext = createContext<{ send: Send, receive: Receive, cleanup: Receive, page: (path: string, params?: string) => void, reconnect: () => void }>()
 
 
 export const SocketProvider = (props: { children: JSX.Element }) => {
@@ -142,8 +142,8 @@ export const SocketProvider = (props: { children: JSX.Element }) => {
         cleanup: (handlers: Handlers) => {
             socket.remove_page_handlers(handlers)
         },
-        page: (path: string) => {
-            socket.send({ t: 'page', d: path })
+        page: (path: string, params?: string) => {
+            socket.send({ t: 'page', d: { path, params } })
         },
         reconnect() {
             socket.disconnect()

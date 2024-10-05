@@ -103,7 +103,7 @@ export class Peer {
         let user = await getUser()
 
         let peer = new Peer(ws, request, user)
-        peer.dispatch = dispatch_peer(peer, '')
+        peer.dispatch = dispatch_peer(peer, {path: ''})
         return peer
     }
 
@@ -120,6 +120,7 @@ export class Peer {
 
 
     terminate() {
+        this.send('reload')
         this.ws.terminate()
     }
 }

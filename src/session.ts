@@ -1,6 +1,6 @@
 import { cache } from "@solidjs/router";
 import { useSession } from "vinxi/http";
-import { game_by_id, create_user, drop_user_by_id, new_user, Profile, profile_by_username, User, user_by_id, Game } from "./db";
+import { game_by_id, create_user, drop_user_by_id, new_user, Profile, profile_by_username, User, user_by_id, DbGame } from "./db";
 import { Board_decode, GameId, Player, Pov, UserId } from "./types";
 import { Board, DuckChess, makeFen } from "duckops";
 
@@ -59,7 +59,7 @@ export const getProfile = cache(async (username: string): Promise<Profile | unde
   return await profile_by_username(username)
 }, 'get_profile')
 
-export const getGame = cache(async (id: string): Promise<Game | undefined> => {
+export const getGame = cache(async (id: string): Promise<DbGame | undefined> => {
   "use server"
   return await game_by_id(id)
 }, 'get_game')
@@ -102,7 +102,8 @@ export const getPov = cache(async (id: GameId, user_id: UserId): Promise<Pov | u
   let game = {
     id,
     fen,
-    sans: g.sans.split('')
+    sans: g.sans.split(''),
+    status: g.status
   }
 
   return {

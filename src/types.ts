@@ -24,7 +24,8 @@ export type Player = {
 export type Game = {
     id: GameId,
     fen: string,
-    sans: string[]
+    sans: string[],
+    status: GameStatus
 }
 
 export type Pov = {
