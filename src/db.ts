@@ -1,6 +1,6 @@
 "use server"
 import { generate_username } from "./gen"
-import { Board_encode, GameId, GameStatus, ProfileId, TimeControl, UserId } from './types'
+import { Board_encode, GameId, GameStatus, ProfileId, SessionId, TimeControl, UserId } from './types'
 import { Board, DuckChess } from 'duckops'
 
 import Database from 'better-sqlite3'
@@ -36,11 +36,20 @@ export type Profile = {
   nb_games: number
 }
 
-
-
+export type Session = {
+    id: SessionId,
+    user_id: UserId | null,
+}
 
 export const gen_id = () => {
   return Math.random().toString(16).slice(8)
+}
+
+export const create_session = (): Session => {
+  return {
+    id: gen_id() + gen_id(),
+    user_id: null
+  }
 }
 
 export const create_game = (white: UserId, black: UserId, clock: TimeControl): DbGame => {
@@ -82,10 +91,23 @@ export const create_profile = (user: User) => {
 }
 
 async function create_databases() {
-  const create_users = `CREATE TABLE IF NOT EXISTS users ("id" TEXT PRIMARY KEY, "username" TEXT, "lichess_token" TEXT)`
-  const create_profiles = `CREATE TABLE IF NOT EXISTS profiles ("id" TEXT PRIMARY KEY, "user_id" TEXT, "rating" NUMBER, "nb_games" NUMBER)`
-  const create_games = `CREATE TABLE IF NOT EXISTS games (
-  "id" TEXT PRIMARY KEY, 
+  const create_sessions = `CREATE TABLE IF NOT EXISTS 
+  sessions 
+  ("id" TEXT PRIMARY KEY, "user_id" TEXT,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+  )`
+  const create_users = `CREATE TABLE IF NOT EXISTS 
+  users 
+  ("id" TEXT PRIMARY KEY, "username" TEXT, "lichess_token" TEXT)`
+
+  const create_profiles = `CREATE TABLE IF NOT EXISTS 
+  profiles 
+  ("id" TEXT PRIMARY KEY, "user_id" TEXT, "rating" NUMBER, "nb_games" NUMBER,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+  )`
+  const create_games = `CREATE TABLE IF NOT EXISTS 
+  games 
+  ("id" TEXT PRIMARY KEY, 
   "white" TEXT, 
   "black" TEXT, 
   "status" NUMBER,
@@ -96,6 +118,7 @@ async function create_databases() {
   )`
 
 
+  db.prepare(create_sessions).run()
   db.prepare(create_users).run()
   db.prepare(create_profiles).run()
   db.prepare(create_games).run()
@@ -103,6 +126,22 @@ async function create_databases() {
 }
 
 create_databases()
+
+
+export async function new_session(session: Session) {
+    await db.prepare(`INSERT INTO sessions VALUES (@id, @user_id)`).run(session)
+}
+
+export async function session_by_id(session_id: SessionId) {
+  let rows = await db.prepare<SessionId, Session>(`SELECT * from sessions WHERE id = ?`).get(session_id)
+  return rows
+}
+
+export async function update_session(u: { id: SessionId, user_id: UserId }) {
+  db.prepare(`UPDATE sessions SET user_id = @user_id WHERE sessions.id = @id`).run(u)
+}
+
+
 
 
 
@@ -151,8 +190,7 @@ export async function user_by_username(username: string) {
 
 
 export async function drop_user_by_id(user_id: string) {
-  db.prepare(`DELETE FROM users WHERE id = ?`).run(user_id)
-  db.prepare(`DELETE FROM profiles WHERE user_id = ?`).run(user_id)
+  //await db.prepare(`DELETE FROM users WHERE id = ?`).run(user_id)
 }
 
 

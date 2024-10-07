@@ -6,9 +6,9 @@ import "~/app.scss";
 import './Home.scss'
 import { Hook } from "~/handlers/lobby";
 import { createAsync, redirect, useNavigate } from "@solidjs/router";
-import { getUser } from "~/session";
 import { User } from "../db";
 import { TimeControl } from "~/types";
+import { getUser } from '~/components/cached'
 
 export default function Home() {
 

@@ -1,25 +1,46 @@
-import { cache } from "@solidjs/router";
-import { useSession } from "vinxi/http";
-import { game_by_id, create_user, drop_user_by_id, new_user, Profile, profile_by_username, User, user_by_id, DbGame } from "./db";
-import { Board_decode, GameId, Player, Pov, UserId } from "./types";
+"use server"
+import { getCookie, setCookie } from "vinxi/http";
+import { session_by_id, game_by_id, create_user, drop_user_by_id, new_user, Profile, profile_by_username, User, user_by_id, DbGame, create_session, new_session, update_session } from "./db";
+import { Board_decode, GameId, Player, Pov, SessionId, UserId } from "./types";
 import { Board, DuckChess, makeFen } from "duckops";
 
 export type UserSession = {
   user_id: string
 }
 
+/*
 export const getSession = async () => {
   "use server"
   return await useSession<UserSession>({
     password: process.env.SESSION_SECRET ?? 'secret_hash_key_placeholder_32_keys'
   })
 }
+  */
 
-export const resetUser = cache(async(): Promise<User> => {
-  "use server"
-  const session = await getSession()
+export const getOrCreateSession = async () => {
+  let sid = getCookie('sid')
+  if (sid) {
+    let res = await getSessionById(sid)
+    if (res) {
+      return res
+    }
+  }
 
-  const user_id = session.data.user_id
+  let res = create_session()
+  new_session(res)
+  setCookie('sid', res.id)
+  return res
+}
+
+export const getSessionById = async (sid: SessionId) => {
+  return await session_by_id(sid)
+}
+
+
+export const resetUser = async(): Promise<User> => {
+  const session = await getOrCreateSession()
+
+  const user_id = session.user_id
   if (user_id) {
     await drop_user_by_id(user_id)
   } 
@@ -28,15 +49,14 @@ export const resetUser = cache(async(): Promise<User> => {
   let user = await create_user()
 
   await new_user(user)
-  await session.update((d: UserSession) => ({ user_id: user.id }))
+  await update_session({ id: session.id, user_id: user.id })
   return user
-}, 'reset_user')
+}
 
-export const getUser = cache(async (): Promise<User> => {
-  "use server"
-  const session = await getSession()
+export const getUser = async (): Promise<User> => {
+  const session = await getOrCreateSession()
 
-  const user_id = session.data.user_id
+  const user_id = session.user_id
   let user: User | undefined
   if (user_id) {
     user = await user_by_id(user_id)
@@ -49,25 +69,21 @@ export const getUser = cache(async (): Promise<User> => {
   user = await create_user()
 
   await new_user(user)
-  await session.update((d: UserSession) => ({ user_id: user.id }))
+  await update_session({ id: session.id, user_id: user.id })
   return user
-}, 'get_user')
+}
 
 
-export const getProfile = cache(async (username: string): Promise<Profile | undefined> => {
-  "use server"
+export const getProfile = async (username: string): Promise<Profile | undefined> => {
   return await profile_by_username(username)
-}, 'get_profile')
+}
 
-export const getGame = cache(async (id: string): Promise<DbGame | undefined> => {
-  "use server"
+export const getGame = async (id: string): Promise<DbGame | undefined> => {
   return await game_by_id(id)
-}, 'get_game')
+}
 
 
-export const getPov = cache(async (id: GameId, user_id: UserId): Promise<Pov | undefined> => {
-  "use server"
-
+export const getPov = async (id: GameId, user_id: UserId): Promise<Pov | undefined> => {
   let g = await getGame(id)
 
   if (!g) {
@@ -92,6 +108,7 @@ export const getPov = cache(async (id: GameId, user_id: UserId): Promise<Pov | u
     [player, opponent] = [black, white]
   }
 
+  /*
   let duckchess = DuckChess.make(
     Board_decode(g.board),
     g.rule50_ply,
@@ -112,4 +129,5 @@ export const getPov = cache(async (id: GameId, user_id: UserId): Promise<Pov | u
     clock,
     game
   }
-}, 'get_pov')
+    */
+}

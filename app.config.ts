@@ -1,6 +1,11 @@
 import { defineConfig } from "@solidjs/start/config";
 
 export default defineConfig({
+    server: {
+        experimental: {
+            websocket: true
+        }
+    },
     vite: {
         css: {
             preprocessorOptions: {
@@ -10,4 +15,10 @@ export default defineConfig({
             }
         }
     }
-});
+}).addRouter({
+    name: 'websocket',
+    type: 'http',
+    handler: './src/websocket.ts',
+    target: 'server',
+    base: '/_ws'
+})

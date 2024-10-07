@@ -2,7 +2,7 @@ import { MetaProvider, Title } from "@solidjs/meta";
 import { A, cache, createAsync, reload, Router, useNavigate } from "@solidjs/router";
 import { FileRoutes } from "@solidjs/start/router";
 import { createEffect, Show, Suspense, useContext } from "solid-js";
-import { getUser } from './session'
+import { getUser } from './components/cached'
 import { User } from "./db";
 
 import "./app.scss";

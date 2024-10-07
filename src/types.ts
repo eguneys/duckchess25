@@ -1,9 +1,9 @@
 import { Board, Color, DuckChess, SquareSet } from 'duckops'
 
+export type SessionId = string
 export type UserId = string
 export type GameId = string
 export type ProfileId = string
-
 
 export const time_controls = ['threetwo', 'fivefour', 'tenzero', 'twentyzero']
 

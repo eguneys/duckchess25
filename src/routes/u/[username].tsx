@@ -6,7 +6,7 @@ import { createEffect, createSignal, on, onCleanup, onMount, Show, Suspense, use
 import "~/app.scss";
 import './User.scss'
 import { SocketContext, SocketProvider } from "~/components/socket"
-import { getProfile, getUser, resetUser } from "~/session"
+import { getProfile, getUser, resetUser } from "~/components/cached"
 
 export default function Home() {
     const params = useParams()
@@ -26,7 +26,7 @@ export default function Home() {
         "use server"
         let user = await resetUser()
 
-        return redirect(`/u/${user.username}`, { revalidate: ['get_user']})
+        return redirect(`/u/${user.username}`, { revalidate: [getUser.key, getProfile.key]})
     }))
 
     return (<>
