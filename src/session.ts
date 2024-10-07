@@ -1,6 +1,6 @@
 "use server"
 import { getCookie, setCookie } from "vinxi/http";
-import { session_by_id, game_by_id, create_user, drop_user_by_id, new_user, Profile, profile_by_username, User, user_by_id, DbGame, create_session, new_session, update_session } from "./db";
+import { session_by_id, game_by_id, create_user, drop_user_by_id, new_user, Profile, profile_by_username, User, user_by_id, DbGame, create_session, new_session, update_session, Session } from "./db";
 import { Board_decode, GameId, Player, Pov, SessionId, UserId } from "./types";
 import { Board, DuckChess, makeFen } from "duckops";
 
@@ -53,8 +53,13 @@ export const resetUser = async(): Promise<User> => {
   return user
 }
 
-export const getUser = async (): Promise<User> => {
+export const getUser = async () : Promise<User> => {
+
   const session = await getOrCreateSession()
+  return getUserWithSession(session)
+}
+
+export const getUserWithSession = async (session: Session): Promise<User> => {
 
   const user_id = session.user_id
   let user: User | undefined

@@ -1,9 +1,21 @@
-import { Peer } from "~/ws";
-import { Dispatch } from "./dispatch";
+import { Peer, Dispatch, Message } from "./dispatch";
+import { User } from "~/db";
 
 export class Site extends Dispatch {
 
-    static peers: Peer[] = []
+    static nb_peers = 0
 
-    constructor(peer: Peer, on_peers_change: () => void) { super('site', peer, Site.peers, on_peers_change) }
+    constructor(user: User, peer: Peer) { super(user, 'site', peer) }
+
+    _join() {
+        Site.nb_peers += 1
+    }
+
+    _leave() {
+        Site.nb_peers -= 1
+    }
+
+    async _message(_: Message) {
+
+    }
 }

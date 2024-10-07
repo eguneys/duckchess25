@@ -1,8 +1,7 @@
-import { Dispatch, peer_send } from "./dispatch";
-import { create_game, gen_id, new_game, User, user_by_username } from "~/db";
-import { getProfile } from "~/session";
-import { time_controls, TimeControl } from "~/types";
-import { Peer } from "~/ws";
+import { Peer, Dispatch, peer_send, Message } from "./dispatch";
+import { create_game, gen_id, new_game, User, user_by_username } from "../db";
+import { getProfile } from "../session";
+import { time_controls, TimeControl } from "../types";
 
 
 export type Hook = {
@@ -18,28 +17,26 @@ function create_hook(u: string, rating: number, clock: TimeControl) {
 
 export class Lobby extends Dispatch {
 
-    static peers: Peer[] = []
+    static nb_peers = 0
 
     static hooks: Hook[] = []
 
-    static publish_lobby = (msg: any) => {
-        Lobby.peers.forEach(_ => peer_send(_, msg))
-    }
-
-    constructor(peer: Peer, on_peers_change: () => void) { super('lobby', peer, Lobby.peers, on_peers_change) }
+    constructor(user: User, peer: Peer) { super(user, 'lobby', peer) }
 
     _leave() {
+        Lobby.nb_peers -= 1
         let r = Lobby.hooks.filter(_ => _.u === this.user.username)
         Lobby.hooks = Lobby.hooks.filter(_ => _.u !== this.user.username)
-        this.publish({ t: 'hrem', d: r.map(_ => _.id) })
+        this.publish_room({ t: 'hrem', d: r.map(_ => _.id) })
     }
 
 
     _join() {
+        Lobby.nb_peers += 1
         peer_send(this.peer, {t: 'hlist', d: Lobby.hooks.slice(0, 20)})
     }
 
-    async message(msg: any) {
+    async _message(msg: Message) {
         let username = this.user.username
         let hooks = Lobby.hooks
 
@@ -50,19 +47,19 @@ export class Lobby extends Dispatch {
                     let i = hooks.findIndex(_ => _.u === username && _.clock === msg.d)
                     if (i !== -1) {
                         let h = hooks.splice(i, 1)[0]
-                        this.publish({ t: 'hrem', d: [h.id]})
+                        this.publish_room({ t: 'hrem', d: [h.id]})
                         return
                     }
 
                     let p = await getProfile(this.user.username)
                     if (!p) {
-                        this.peer.terminate()
+                        this.terminate()
                         return
                     }
 
                     let hook = create_hook(username, p.rating, msg.d)
                     hooks.push(hook)
-                    this.publish({ t: 'hadd', d: hook})
+                    this.publish_room({ t: 'hadd', d: hook})
                 }
             } break;
             case 'hjoin': {
@@ -72,11 +69,11 @@ export class Lobby extends Dispatch {
 
                     if (h.u === username) {
                         hooks.splice(i, 1)[0]
-                        this.publish({ t: 'hrem', d: [h.id] })
+                        this.publish_room({ t: 'hrem', d: [h.id] })
                     } else {
 
                         hooks.splice(i, 1)[0]
-                        this.publish({ t: 'hrem', d: [h.id] })
+                        this.publish_room({ t: 'hrem', d: [h.id] })
 
                         let hu = await user_by_username(h.u)
 

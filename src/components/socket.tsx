@@ -1,5 +1,9 @@
 import { createContext, createSignal, JSX, onCleanup, onMount } from "solid-js";
 
+const getCookieValue = (name: string) => (
+  document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)')?.pop() || ''
+)
+
 type Handlers = Record<string, (d: any) => void>
 
 const pingDelay = 2500
@@ -187,7 +191,9 @@ export const SocketProvider = (props: { children: JSX.Element }) => {
             socket.remove_page_handlers(handlers)
         },
         page: (path: string, params?: string) => {
-            let p = { t: 'page', d: { path, params } }
+
+            let sid = getCookieValue('sid')
+            let p = { sid, path }
             socket.set_page_on_connect = p
             socket.send(p)
         },

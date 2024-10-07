@@ -1,5 +1,20 @@
+import { User } from "~/db"
 import { UserId } from "~/types"
-import { Peer } from "~/ws"
+import { nb_connected_msg } from "./nb_connecteds"
+
+export type Channel = string
+export type Message = any
+export type Peer = {
+    _subscriptions: Set<string>,
+    send: (msg: Message) => void,
+    publish: (channel: Channel, msg: Message) => void,
+    subscribe: (channel: Channel) => void,
+    unsubscribe: (channel: Channel) => void
+}
+
+
+export const key_for_room_channel = (room: string) => `room-${room}`
+export const key_for_users_channel = (user_id: string) => `user-${user_id}`
 
 export function peer_send(peer: Peer, data: any) {
     if (typeof data === 'string') {
@@ -12,50 +27,58 @@ export function peer_send(peer: Peer, data: any) {
 
 
 export interface IDispatch {
-    path: string,
-    join(): void,
-    leave(): void,
-    message(_: any): Promise<void>
+    _join(): void,
+    _leave(): void,
+    _message(_: Message): Promise<void>
 }
 
 export abstract class Dispatch implements IDispatch {
 
-    get user() {
-        return this.peer.user
-    }
-
-    constructor(readonly path: string, readonly peer: Peer, readonly peers: Peer[], readonly on_peers_change: () => void) {}
+    constructor(
+        readonly user: User, 
+        readonly room: string, 
+        readonly peer: Peer) {}
 
     join() {
-        this.peers.push(this.peer)
-        this.on_peers_change()
+        this.peer.subscribe(key_for_users_channel(this.user.id))
+        this.peer.subscribe(key_for_room_channel(this.room))
+
+        this.publish_channel(key_for_room_channel('lobby'), nb_connected_msg())
         this._join()
     }
 
     leave() {
-        let i = this.peers.indexOf(this.peer)
-        if (i !== -1) {
-            this.peers.splice(i, 1)
-        }
-        this.on_peers_change()
+        this.peer._subscriptions.forEach(_ => this.peer.unsubscribe(_))
+        this.publish_channel(key_for_room_channel('lobby'), nb_connected_msg())
         this._leave()
     }
 
-    publish(data: any) {
-        this.peers.forEach(_ => peer_send(_, data))
+    publish_channel(channel: Channel, data: Message) {
+        this.peer.publish(channel, data)
+        this.peer.send(data)
+    }
+
+    publish_room(data: Message) {
+        this.publish_channel(key_for_room_channel(this.room), data)
     }
 
 
     publish_users(data: any, users: UserId[]) {
-        this.peers
-        .filter(_ => users.includes(_.user.id))
-        .forEach(_ => peer_send(_, data))
+        users.forEach(user_id => this.publish_channel(key_for_users_channel(user_id), data))
     }
 
-    async message(_: any) {}
+    async message(message: Message) {
 
+        this._message(message)
+    }
 
-    _join() {}
-    _leave() {}
+    terminate() {
+        // TODO
+        // terminate peer
+     }
+
+    abstract _message(message: Message): Promise<void>
+    abstract _join(): void
+    abstract _leave(): void
 }
 

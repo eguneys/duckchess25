@@ -1,38 +1,88 @@
+"use server"
 import { Site } from "./site"
 import { Lobby } from "./lobby"
 import { Round } from "./round"
-import { IDispatch } from "./dispatch"
+import { Peer, IDispatch, Message, Dispatch, key_for_room_channel } from "./dispatch"
 import { createAsync } from "@solidjs/router"
-import { Peer } from "~/ws"
+import { getSessionById, getUserWithSession } from "../session"
+import { SessionId } from "~/types"
+import { User } from "~/db"
 
-function nb_connected_msg() {
-    return { t: 'n', d: nb_connected(), r: nb_games() }
-}
+export async function dispatch_peer(peer: Peer, data: string) {
 
-function nb_connected() {
-    return Lobby.peers.length + Site.peers.length
-}
+    let subbed_sid = [...peer._subscriptions].find(_ => _.includes('sid'))
+    let subbed_path = [...peer._subscriptions].find(_ => _.includes('room'))
 
-function nb_games() {
-    return 0
-}
+    let sid: SessionId
+    let old_path = subbed_path ? subbed_path.slice(5) : undefined
+    let path = subbed_path ? subbed_path.slice(5) : 'site'
 
-export function debounce_publish_lobby() {
-    Lobby.publish_lobby(nb_connected_msg())
-}
+    let message
+    
+    if (subbed_sid && subbed_path) {
+        sid = subbed_sid.slice(4)
+        message = JSON.parse(data)
 
 
-export function dispatch_peer(peer: Peer, link: { path: string, params?: string }): IDispatch {
-    switch (link.path) {
-        case 'lobby':
-            return new Lobby(peer, debounce_publish_lobby)
-        case 'round':
-            if (!link.params) {
-                throw `Bad Round Params by user <${peer.user.id}>`
-            }
-            return new Round(peer, debounce_publish_lobby, link.params)
-        default:
-            return new Site(peer, debounce_publish_lobby)
+        if (typeof message === 'object' && typeof message.path === 'string') {
+            path = message.path
+        }
+
+
+    } else {
+
+        let parsed
+
+        parsed = JSON.parse(data)
+
+        if (typeof parsed !== 'object') {
+            throw 'Bad parse ' + data
+        }
+
+
+        if (!parsed.sid || typeof parsed.sid !== 'string' || !parsed.path || typeof parsed.path !== 'string') {
+            throw 'Bad sid ' + parsed
+        }
+
+        path = parsed.path
+        sid = parsed.sid
+    }
+
+    let session = await getSessionById(sid)
+
+    if (!session) {
+        throw "No session for dispatch_peer " + sid
+    }
+
+    let user = await getUserWithSession(session)
+
+    if (!user) {
+        throw "No user for dispatch_peer " + sid
+    }
+
+
+    console.log(old_path, path)
+    if (!old_path || old_path !== path) {
+        console.log('join or leave')
+        if (old_path) dispatch_path(old_path, user, peer).leave()
+        dispatch_path(path, user, peer).join()
+        peer.subscribe('sid-' + sid)
+    }
+
+    if (message) {
+        dispatch_path(path, user, peer).message(message)
     }
 }
 
+
+function dispatch_path(path: string, user: User, peer: Peer) {
+    switch (path) {
+        case 'lobby':
+            return new Lobby(user, peer)
+        case 'round':
+            //return new Round(user, peer)
+        default:
+            return new Site(user, peer)
+            break
+    }
+}
