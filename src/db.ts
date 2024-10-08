@@ -1,7 +1,7 @@
 "use server"
 import { generate_username } from "./gen"
-import { Board_encode, GameId, GameStatus, ProfileId, SessionId, TimeControl, UserId } from './types'
-import { Board, DuckChess } from 'duckops'
+import { Board_encode, Castles_encode, GameId, GameStatus, ProfileId, SessionId, TimeControl, UserId } from './types'
+import { Board, Color, DuckChess } from 'duckops'
 
 import Database from 'better-sqlite3'
 
@@ -20,7 +20,12 @@ export type DbGame = {
   cycle_length: number,
   rule50_ply: number,
   board: Buffer,
-  sans: string
+  sans: string,
+  halfmoves: number,
+  fullmoves: number,
+  turn: Color,
+  castles: Buffer,
+  epSquare: number | null
 }
 
 export type User = {
@@ -65,7 +70,12 @@ export const create_game = (white: UserId, black: UserId, clock: TimeControl): D
     cycle_length: d.cycle_length,
     rule50_ply: d.rule50_ply,
     board: Board_encode(d.board),
-    sans: ''
+    sans: '',
+    halfmoves: d.halfmoves,
+    fullmoves: d.fullmoves,
+    turn: d.turn,
+    castles: Castles_encode(d.castles),
+    epSquare: d.epSquare ?? null
   }
 }
 
@@ -114,7 +124,14 @@ async function create_databases() {
   "cycle_length" NUMBER,
   "rule50_ply" NUMBER,
   "board" BLOB,
-  "sans" TEXT
+  "sans" TEXT,
+  "halfmoves" NUMBER,
+  "fullmoves" NUMBER,
+  "turn" TEXT,
+  "castles" BLOB,
+  "epSquare" NUMBER,
+  FOREIGN KEY (white) REFERENCES users(id),
+  FOREIGN KEY (black) REFERENCES users(id)
   )`
 
 
@@ -148,7 +165,9 @@ export async function update_session(u: { id: SessionId, user_id: UserId }) {
 export async function new_game(game: DbGame) {
     await db.prepare(`INSERT INTO games VALUES (
       @id, @white, @black, @status,
-      @cycle_length, @rule50_ply, $board, @sans)`).run(game)
+      @cycle_length, @rule50_ply, @board, @sans,
+      @halfmoves, @fullmoves, @turn, @castles,
+      @epSquare)`).run(game)
 }
 
 export async function game_by_id(game_id: string) {

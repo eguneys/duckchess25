@@ -3,7 +3,7 @@ import { A, createAsync, useParams } from "@solidjs/router";
 import { HttpStatusCode } from "@solidjs/start";
 import { createEffect, createMemo, createSignal, onCleanup, onMount, Show, Suspense, useContext } from "solid-js";
 import { DbGame, User } from "~/db";
-import { getGame, getPov, getUser } from "~/session";
+import { getPov, getUser } from "~/components/cached";
 import { Pov } from '~/types'
 
 import '~/app.scss'
@@ -13,17 +13,16 @@ import { SocketContext } from "~/components/socket";
 
 export default function Round() {
 
-    const params = useParams()
+  const params = useParams()
 
-    let { page } = useContext(SocketContext)!
-    onMount(() => {
-        page('round', params.game_id)
-    })
+  let { page } = useContext(SocketContext)!
+  onMount(() => {
+    page('round', params.game_id)
+  })
 
 
-    const user = createAsync<User>(() => getUser())
-    let pov = createAsync(() => getPov(params.game_id, user()?.id ?? 'black'))
-
+  const user = createAsync<User>(() => getUser())
+  let pov = createAsync(() => getPov(params.game_id, user()?.id ?? 'black'))
 
   return (<>
     <Suspense>

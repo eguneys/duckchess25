@@ -1,7 +1,7 @@
 "use server"
 import { getCookie, setCookie } from "vinxi/http";
 import { session_by_id, game_by_id, create_user, drop_user_by_id, new_user, Profile, profile_by_username, User, user_by_id, DbGame, create_session, new_session, update_session, Session } from "./db";
-import { Board_decode, GameId, Player, Pov, SessionId, UserId } from "./types";
+import { Board_decode, Castles_decode, GameId, Player, Pov, SessionId, UserId } from "./types";
 import { Board, DuckChess, makeFen } from "duckops";
 
 export type UserSession = {
@@ -113,11 +113,15 @@ export const getPov = async (id: GameId, user_id: UserId): Promise<Pov | undefin
     [player, opponent] = [black, white]
   }
 
-  /*
   let duckchess = DuckChess.make(
     Board_decode(g.board),
     g.rule50_ply,
-    g.cycle_length)
+    g.cycle_length,
+    g.halfmoves,
+    g.fullmoves,
+    g.turn,
+    Castles_decode(g.castles),
+    g.epSquare ?? undefined)
 
   let fen = makeFen(duckchess.toSetup())
 
@@ -134,5 +138,4 @@ export const getPov = async (id: GameId, user_id: UserId): Promise<Pov | undefin
     clock,
     game
   }
-    */
 }
