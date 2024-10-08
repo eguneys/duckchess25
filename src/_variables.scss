@@ -2,7 +2,9 @@ $background: #FBFFBD;
 
 $primary: #F8FAE0;
 $primary-light: #dcdecc;
-$primary-dark: #63645e;
+$primary-dark: #83847d;
+$primary-dark2: #63645e;
+$primary-dark3: #3a3a37;
 
 $light-green: #639e3c;
 
@@ -14,5 +16,25 @@ $text: #938e81;
 $text-light: #faf9f5;
 
 
-$c-good: #329f41;
+$c-good: hsl(88, 62%, 37%);
 $c-bad: #be3838;
+
+
+$site-header-height: 50px;
+$col-uniboard-width: calc(100vh - $site-header-height - 10px);
+
+
+@font-face {
+    font-family: 'lichess';
+    font-display: block;
+    src: url('/lichess.woff2') format('woff2');
+}
+
+%base-font {
+  font-family: 'Noto Sans', Sans-Serif;
+}
+
+%san {
+  font-family: 'Noto Chess', 'Noto Sans';
+}
+

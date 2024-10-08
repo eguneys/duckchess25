@@ -2,7 +2,7 @@
 import { getCookie, setCookie } from "vinxi/http";
 import { session_by_id, game_by_id, create_user, drop_user_by_id, new_user, Profile, profile_by_username, User, user_by_id, DbGame, create_session, new_session, update_session, Session } from "./db";
 import { Board_decode, Castles_decode, GameId, Player, Pov, SessionId, UserId } from "./types";
-import { Board, DuckChess, makeFen } from "duckops";
+import { Board, Color, DuckChess, makeFen } from "duckops";
 
 export type UserSession = {
   user_id: string
@@ -78,15 +78,38 @@ export const getUserWithSession = async (session: Session): Promise<User> => {
   return user
 }
 
+export const getUserById = async (id: UserId): Promise<User | undefined> => {
+  return await user_by_id(id)
+}
 
 export const getProfile = async (username: string): Promise<Profile | undefined> => {
   return await profile_by_username(username)
 }
 
-export const getGame = async (id: string): Promise<DbGame | undefined> => {
+export const getGame = async (id: GameId): Promise<DbGame | undefined> => {
   return await game_by_id(id)
 }
 
+export const getPlayer = async (id: UserId, color: Color): Promise<Player | undefined> => {
+  let user = await getUserById(id)
+
+  if (!user) {
+    return undefined
+  }
+
+  let profile = await getProfile(user.username)
+
+  if (!profile) {
+    return undefined
+  }
+
+  return {
+    id: user.id,
+    username: user.username,
+    rating: profile.rating,
+    color
+  }
+}
 
 export const getPov = async (id: GameId, user_id: UserId): Promise<Pov | undefined> => {
   let g = await getGame(id)
@@ -97,14 +120,11 @@ export const getPov = async (id: GameId, user_id: UserId): Promise<Pov | undefin
 
   let clock = g.clock
 
-  let white: Player = {
-    id: g.white,
-    color: 'white'
-  }
+  let white = await getPlayer(g.white, 'white')
+  let black = await getPlayer(g.black, 'black')
 
-  let black: Player = {
-    id: g.black,
-    color: 'black'
+  if (!white || !black) {
+    return undefined
   }
 
   let [player, opponent] = [white, black]

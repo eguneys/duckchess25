@@ -1,9 +1,8 @@
-import { Peer } from "~/ws";
-import { Dispatch, peer_send } from "./dispatch";
-import { getGame, getPov } from "~/session";
+import { Dispatch, Message, Peer, peer_send } from "./dispatch";
+import { getGame, getPov } from "../session";
 import { Board, DuckChess, GameResult, makeFen, makeSan, parseFen, parseSan, parseUci, PositionHistory } from "duckops";
-import { DbGame, make_game_move } from "~/db";
-import { Board_encode, GameStatus } from "~/types";
+import { DbGame, make_game_move, User } from "../db";
+import { Board_encode, Castles_encode, GameStatus } from "../types";
 import { revalidate } from "@solidjs/router";
 
 const history_step_builder = (sans: string[]) => {
@@ -13,7 +12,7 @@ const history_step_builder = (sans: string[]) => {
     sans.reduce((last, dsan) => {
         let s = parseSan(last, dsan)
         if (!s) {
-            throw "Bad History " + dsan
+            throw `Bad History [${dsan}] for ` + sans
         }
         history.append(s)
         return history.last()
@@ -23,9 +22,7 @@ const history_step_builder = (sans: string[]) => {
 
 export class Round extends Dispatch {
 
-    static peers: Peer[] = []
-
-    constructor(peer: Peer, on_peers_change: () => void, readonly params: string) { super('round', peer, Round.peers, on_peers_change) }
+    constructor(user: User, peer: Peer, readonly params: string) { super(user, `round&${params}`, peer) }
 
 
     get game_id() {
@@ -51,28 +48,14 @@ export class Round extends Dispatch {
         }
     }
 
-    async get_peers() {
-        let ids = await this.get_player_ids()
-        if (ids) {
-            return Round.peers.filter(_ => ids.includes(_.user.id))
-        }
-    }
-
-    async publish_peers(msg: any) {
-        let pp = await this.get_peers()
-        if (pp) {
-            pp.forEach(_ => peer_send(_, msg))
-        }
-    }
-
-    async message(msg: any) {
+    async _message(msg: Message) {
 
         let username = this.user.username
 
         let pov = await this.getPov()
 
         if (!pov) {
-            this.peer.terminate()
+            this.terminate()
             return
         }
 
@@ -85,7 +68,6 @@ export class Round extends Dispatch {
                     throw 'No history'
                 }
 
-                let g = history.last()
                 let uci = msg.d
                 let move = parseUci(uci)
 
@@ -93,6 +75,7 @@ export class Round extends Dispatch {
                     throw 'Bad Move ' + uci
                 }
 
+                let before_game = history.last()
                 history.append(move)
                 let result = history.computeGameResult()
 
@@ -110,24 +93,48 @@ export class Round extends Dispatch {
                         break
                 }
 
-                let san = makeSan(g, move)
-                let board = Board_encode(history.last().board)
+                let last = history.last()
+                let board = Board_encode(last.board)
+
+                let san = makeSan(before_game, move)
                 pov.game.sans.push(san)
                 let sans = pov.game.sans.join(' ')
 
-                await make_game_move({ id: this.game_id, board, status, sans })
+                let cycle_length = last.cycle_length
+                let rule50_ply = last.rule50_ply
+                let halfmoves = last.halfmoves
+                let fullmoves = last.fullmoves
+                let turn = last.turn
+                let castles = Castles_encode(last.castles)
+                let epSquare = last.epSquare ?? null
 
-                await revalidate(getGame.keyFor(this.game_id), true)
-                await revalidate(getPov.keyFor(this.game_id, this.user.id), true)
+                let fen = makeFen(last.toSetup())
 
-                let asdf = await getGame(this.game_id)
-                console.log(getGame.keyFor(this.game_id), ' after revalidate', this.game_id, 'sans', asdf!.sans)
-                console.log(getPov.keyFor(this.game_id, this.user.id))
+                await make_game_move({ 
+                    id: this.game_id, 
+                    status,
+                    cycle_length,
+                    rule50_ply,
+                    board,
+                    sans,
+                    halfmoves,
+                    fullmoves,
+                    turn, 
+                    castles,
+                    epSquare
+                })
 
-
-                this.publish_peers({ t: 'move', d: uci })
+                this.publish_room({ t: 'move', d: { uci, san, fen } }, true)
             }
         }
     }
 
+    _join() {
+
+    }
+
+
+    _leave() {
+
+    }
 }

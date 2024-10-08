@@ -663,7 +663,7 @@ export const DuckBoard = (props: { on_user_move: (uci: string) => void, do_uci: 
     const on_resize_handle = () => set_on_resize()
 
     clear.push(makeEventListener(document, 'scroll', on_resize_handle))
-    clear.push(makeEventListener(document, 'resize', on_resize_handle))
+    clear.push(makeEventListener(window, 'resize', on_resize_handle))
 
     clear.push(makeEventListener(document, 'touchmove', on_move_handle))
     clear.push(makeEventListener(document, 'mousemove', on_move_handle))
@@ -685,15 +685,15 @@ export const DuckBoard = (props: { on_user_move: (uci: string) => void, do_uci: 
       <For each={ranks()}>{ rank => <div class='rank'>{rank}</div> }</For>
     </div>
     <div ref={_ => $duckboard_el = _} class='pieces'>
-        <For each={duck_initial_dests()}>{ dest => <Dest dest={dest}/> }</For>
-        <For each={selected_dests()}>{ dest => <Dest dest={dest}/> }</For>
-        <For each={duck_move_dests()}>{ dest => <Dest dest={dest}/> }</For>
-        <Show when={selected_square()}>{ selected => <Selected selected={posSquareName(selected())}/>}</Show>
+        <For each={duck_initial_dests()}>{ dest => <Dest dest={dest} is_flipped={is_flipped()}/> }</For>
+        <For each={selected_dests()}>{ dest => <Dest dest={dest} is_flipped={is_flipped()} /> }</For>
+        <For each={duck_move_dests()}>{ dest => <Dest dest={dest} is_flipped={is_flipped()} /> }</For>
+        <Show when={selected_square()}>{ selected => <Selected selected={posSquareName(selected())} is_flipped={is_flipped()}/>}</Show>
 
         <Show when={last_move()}>{ last_move =>
           <>
-            <LastMove square={makeSquare(last_move().from)} />
-            <LastMove square={makeSquare(last_move().to)} />
+            <LastMove square={makeSquare(last_move().from)} is_flipped={is_flipped()} />
+            <LastMove square={makeSquare(last_move().to)} is_flipped={is_flipped()} />
           </>
         }</Show>
         <For each={on_pieces_animated()}>{piece => <Piece piece={piece}/>}</For>
@@ -728,23 +728,23 @@ const Piece = (props: { klass?: string, piece: OnPiece }) => {
   return (<div class={'piece ' + klass()} style={style()}></div>)
 }
 
-const SquareKlass = (props: { klass: string, square: SquareName }) => {
+const SquareKlass = (props: { klass: string, square: SquareName, is_flipped: boolean }) => {
 
-  let pos = createMemo(() => coord_to_percent({ file: props.square[0], rank: props.square[1] }))
+  let pos = createMemo(() => coord_to_percent({ file: props.square[0], rank: props.square[1] }, props.is_flipped))
 
   let style = createMemo(() => `transform: translate(${pos()[0]}%, ${pos()[1]}%);`)
 
   return (<div class={'square ' + props.klass} style={style()}></div>)
 }
 
-const Dest = (props: { dest: SquareName }) => {
-  return <SquareKlass klass='dest' square={props.dest} />
+const Dest = (props: { dest: SquareName, is_flipped: boolean }) => {
+  return <SquareKlass klass='dest' square={props.dest} is_flipped={props.is_flipped} />
 }
 
-const Selected = (props: { selected: SquareName }) => {
-  return <SquareKlass klass='selected' square={props.selected} />
+const Selected = (props: { selected: SquareName, is_flipped: boolean }) => {
+  return <SquareKlass klass='selected' square={props.selected} is_flipped={props.is_flipped} />
 }
 
-const LastMove = (props: { square: SquareName }) => {
-  return <SquareKlass klass='last-move' square={props.square} />
+const LastMove = (props: { square: SquareName, is_flipped: boolean }) => {
+  return <SquareKlass klass='last-move' {...props} />
 }

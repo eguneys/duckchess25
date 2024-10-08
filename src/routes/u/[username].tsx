@@ -38,20 +38,23 @@ export default function Home() {
                     <Show when={profile()} fallback={
                         <button onClick={() => action_reset_profile()}>Reset Profile</button>
                     }>{profile =>
-                        <>
-                            <div class='head'>
-                                <div class='username'>{params.username}
-                                    <span class='rating'>{profile().rating}</span>
+                            <>
+                                <div class='head'>
+                                    <h1>
+                                        <span class='online user-link'>
+                                            <i class='line'></i>
+                                            {params.username}</span>
+                                        <span class='rating'>{profile().rating}</span>
+                                    </h1>
+                                    <div class='tools'>
+                                        <Show when={user()?.username === params.username}>
+                                            <button onClick={() => action_reset_profile()}>Reset Profile</button>
+                                        </Show>
+                                    </div>
                                 </div>
-                                <div class='tools'>
-                                    <Show when={user()?.username === params.username}>
-                                        <button onClick={() => action_reset_profile()}>Reset Profile</button>
-                                    </Show>
-                                </div>
-                            </div>
-                            <p class='activity'>{profile().nb_games} games played.</p>
-                        </>
-                    }</Show>
+                                <p class='activity'>{profile().nb_games} games played.</p>
+                            </>
+                        }</Show>
                 </Suspense>
             </div>
         </main>

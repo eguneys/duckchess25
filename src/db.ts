@@ -28,6 +28,20 @@ export type DbGame = {
   epSquare: number | null
 }
 
+type DbGameMoveUpdate = {
+  id: GameId,
+  status: GameStatus,
+  cycle_length: number,
+  rule50_ply: number,
+  board: Buffer,
+  sans: string,
+  halfmoves: number,
+  fullmoves: number,
+  turn: Color,
+  castles: Buffer,
+  epSquare: number | null
+}
+
 export type User = {
   id: UserId,
   username: string,
@@ -175,18 +189,18 @@ export async function game_by_id(game_id: string) {
     return rows
 }
 
-type DbGameMoveUpdate = {
-  id: string
-  board: Buffer,
-  sans: string,
-  status: GameStatus
-}
 export async function make_game_move(u: DbGameMoveUpdate) {
-  db.prepare(`UPDATE games SET status = @status, board = @board, sans = @sans WHERE games.id = @id`).run(u)
-
-
-  console.log('in db', u.id, u.sans, db.prepare(`SELECT sans from games where id = ?`).get(u.id))
-
+  db.prepare(`UPDATE games SET 
+    status = @status, 
+    cycle_length = @cycle_length,
+    rule50_ply = @rule50_ply,
+    board = @board, sans = @sans ,
+    halfmoves = @halfmoves,
+    fullmoves = @fullmoves,
+    turn = @turn,
+    castles = @castles,
+    epSquare = @epSquare
+    WHERE games.id = @id`).run(u)
 }
 
 

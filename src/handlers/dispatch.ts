@@ -53,13 +53,15 @@ export abstract class Dispatch implements IDispatch {
         this._leave()
     }
 
-    publish_channel(channel: Channel, data: Message) {
+    publish_channel(channel: Channel, data: Message, only_rest?: true) {
         this.peer.publish(channel, data)
-        this.peer.send(data)
+        if (!only_rest && this.peer._subscriptions.has(channel)) {
+            this.peer.send(data)
+        }
     }
 
-    publish_room(data: Message) {
-        this.publish_channel(key_for_room_channel(this.room), data)
+    publish_room(data: Message, only_rest?: true) {
+        this.publish_channel(key_for_room_channel(this.room), data, only_rest)
     }
 
 

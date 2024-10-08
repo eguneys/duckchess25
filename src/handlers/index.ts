@@ -60,10 +60,7 @@ export async function dispatch_peer(peer: Peer, data: string) {
         throw "No user for dispatch_peer " + sid
     }
 
-
-    console.log(old_path, path)
     if (!old_path || old_path !== path) {
-        console.log('join or leave')
         if (old_path) dispatch_path(old_path, user, peer).leave()
         dispatch_path(path, user, peer).join()
         peer.subscribe('sid-' + sid)
@@ -76,11 +73,14 @@ export async function dispatch_peer(peer: Peer, data: string) {
 
 
 function dispatch_path(path: string, user: User, peer: Peer) {
-    switch (path) {
+    let [room, params] = path.split('&')
+    switch (room) {
         case 'lobby':
             return new Lobby(user, peer)
+            break
         case 'round':
-            //return new Round(user, peer)
+            return new Round(user, peer, params)
+            break
         default:
             return new Site(user, peer)
             break

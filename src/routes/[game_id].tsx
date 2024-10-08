@@ -4,9 +4,12 @@ import { HttpStatusCode } from "@solidjs/start";
 import { createEffect, createMemo, createSignal, onCleanup, onMount, Show, Suspense, useContext } from "solid-js";
 import { DbGame, User } from "~/db";
 import { getPov, getUser } from "~/components/cached";
-import { Pov } from '~/types'
+import { Player, Pov } from '~/types'
 
 import '~/app.scss'
+import './Round.scss'
+
+
 import { FenError, makeFen } from "duckops";
 import { DuckBoard } from "~/components/DuckBoard";
 import { SocketContext } from "~/components/socket";
@@ -39,10 +42,9 @@ function PovView(props: { pov: Pov }) {
 
   let { send, page, receive, cleanup } = useContext(SocketContext)!
 
-
   let handlers = {
-    move(uci: string) {
-      set_do_uci(uci)
+    move(d: { uci: string, san: string, fen: string }) {
+      set_do_uci(d.uci)
     }
   }
 
@@ -63,16 +65,48 @@ function PovView(props: { pov: Pov }) {
 
   const pov = createMemo(() => props.pov)
   const player = createMemo(() => pov().player)
+  const opponent = createMemo(() => pov().opponent)
   const orientation = createMemo(() => player().color)
 
   return (<>
-    <main>
-        <Title>Play </Title>
-        <DuckBoard view_only={player().color} orientation={orientation()} on_user_move={on_user_move} do_uci={do_uci()} do_takeback={do_takeback()} fen={pov().game.fen}/>
-      </main>
-    </>)
+    <main class='round'>
+      <Title>Play </Title>
+      <div class='board'>
+        <DuckBoard view_only={player().color} orientation={orientation()} on_user_move={on_user_move} do_uci={do_uci()} do_takeback={do_takeback()} fen={pov().game.fen} />
+      </div>
+      <SideView player={player()} opponent={opponent()} />
+    </main>
+  </>)
 }
 
+function SideView(props: { player: Player, opponent: Player }) {
+  const player = createMemo(() => props.player)
+  const opponent = createMemo(() => props.opponent)
+  return (<>
+    <div class='user-top'>
+      <span class='on-game'></span>
+      <span class='username'>{opponent().username}</span>
+      <span class='rating'>{opponent().rating}</span>
+    </div>
+    <Moves />
+    <div class='user-bot'>
+      <span class='on-game'></span>
+      <span class='username'>{player().username}</span>
+      <span class='rating'>{player().rating}</span>
+    </div>
+  </>)
+}
+
+function Moves() {
+  return (<>
+  <div class='moves'>
+    <div class='buttons'></div>
+    <div class='list'>
+
+    </div>
+  </div>
+  </>)
+}
 
 function NotFound() {
   return (

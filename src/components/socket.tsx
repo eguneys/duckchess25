@@ -190,8 +190,12 @@ export const SocketProvider = (props: { children: JSX.Element }) => {
         cleanup: (handlers: Handlers) => {
             socket.remove_page_handlers(handlers)
         },
-        page: (path: string, params?: string) => {
+        page: (room: string, params?: string) => {
 
+            let path = room
+            if (params) {
+                path += `&${params}`
+            }
             let sid = getCookieValue('sid')
             let p = { sid, path }
             socket.set_page_on_connect = p

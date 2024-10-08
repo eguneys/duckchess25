@@ -7,7 +7,7 @@ main.profile {
 
     .section {
 
-        background: $primary-dark;
+        background: $primary-dark2;
 
         flex: 0 0 80%;
         display: flex;
@@ -18,7 +18,7 @@ main.profile {
             justify-content: space-between;
             border-bottom: 1px solid $primary-light;
         
-                .username {
+                h1 {
                     font-size: 2em;
                     padding: 0.5em;
                     color: $text-light;
@@ -26,12 +26,38 @@ main.profile {
                     display: flex;
                     align-self: center;
 
+                    .user-link {
+
+                            i.line {
+                                color: $text-light;
+                                opacity: .5;
+                                display: inline-block;
+                                width: 1.5em;
+                                text-align: center;
+                                vertical-align: top;
+                            }
+                    
+                            i.line::before {
+                                content: "";
+                            }
+
+                            &.online .line {
+                                color: $c-good;
+                                opacity: .9;
+                            }
+
+                            &.online .line::before {
+                                content: "";
+                            }
+                    
+
                     .rating {
                         display: flex;
                         align-self: center;
                         font-size: 0.82em;
                         margin-left: 1em;
                     }
+                }
                 }
 
         
@@ -55,7 +81,10 @@ main.profile {
         }
 
         .activity {
-
+            display: flex;
+            justify-content: center;
+            padding: 1em;
+            min-height: 10em;
             color: $text-light;
         }
     }

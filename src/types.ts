@@ -18,6 +18,8 @@ export enum GameStatus {
 
 export type Player = {
     id: UserId,
+    username: string,
+    rating: number,
     color: Color
 }
 

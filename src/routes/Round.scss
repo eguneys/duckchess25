@@ -1,0 +1,67 @@
+@import '~/_variables';
+
+
+main.round {
+    display: grid;
+
+    grid-template-areas: 'board .'
+    'board user-top'
+    'board moves'
+    'board user-bot'
+    'board .';
+
+    grid-template-columns: $col-uniboard-width auto;
+    grid-template-rows: auto;
+
+    .board {
+        grid-area: board;
+    }
+
+    .user-top {
+        grid-area: user-top;
+    }
+
+    .user-bot {
+        grid-area: user-bot;
+    }
+
+    .moves {
+        grid-area: moves;
+    }
+
+    .user-bot, .user-top {
+        display: flex;
+        gap: 1em;
+        border-radius: 3px;
+        background: linear-gradient($primary-dark2, $text-dark 40%);
+        color: $text-light;
+        padding: 1em;
+
+        .username {
+            text-align: left;
+            flex: 1;
+        }
+    }
+
+    .user-top {
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+
+    .user-bot {
+        border-top-left-radius: 0;
+        border-top-right-radius: 0;
+    }
+
+
+    .moves {
+        display: flex;
+        flex-flow: column;
+        background: $primary-dark;
+
+
+        .list {
+            flex: 0 0 10rem;
+        }
+    }
+}
