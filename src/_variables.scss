@@ -9,6 +9,7 @@ $primary-dark3: #3a3a37;
 $light-green: #639e3c;
 
 $accent: #CE7143;
+$accent-light: #e3885a;
 
 
 $text-dark: #464524;
@@ -23,6 +24,11 @@ $c-bad: #be3838;
 $site-header-height: 50px;
 $col-uniboard-width: calc(100vh - $site-header-height - 10px);
 
+@font-face {
+  font-family: 'Noto Chess';
+  font-display: block;
+  src: url('/lichess.chess.woff2') format('woff2');
+}
 
 @font-face {
     font-family: 'lichess';

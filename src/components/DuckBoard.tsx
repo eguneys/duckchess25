@@ -427,10 +427,14 @@ export const DuckBoard = (props: { on_user_move: (uci: string) => void, do_uci: 
     if (!uci) {
       return
     }
+
     let move = parseUci(uci)
     if (move) {
       batch(() => {
         with_duckchess((dc: DuckChess) => {
+          if (!dc.can_play(move)) {
+            return dc
+          }
           dc.play(move)
           dc.play_duck(move)
           set_move_before_duck(undefined)

@@ -124,7 +124,7 @@ export class Round extends Dispatch {
                     epSquare
                 })
 
-                this.publish_room({ t: 'move', d: { uci, san, fen } }, true)
+                this.publish_room({ t: 'move', d: { uci, san, fen } })
             }
         }
     }
