@@ -26,38 +26,12 @@ main.profile {
                     display: flex;
                     align-self: center;
 
-                    .user-link {
-
-                            i.line {
-                                color: $text-light;
-                                opacity: .5;
-                                display: inline-block;
-                                width: 1.5em;
-                                text-align: center;
-                                vertical-align: top;
-                            }
-                    
-                            i.line::before {
-                                content: "";
-                            }
-
-                            &.online .line {
-                                color: $c-good;
-                                opacity: .9;
-                            }
-
-                            &.online .line::before {
-                                content: "";
-                            }
-                    
-
-                    .rating {
+                   .rating {
                         display: flex;
                         align-self: center;
                         font-size: 0.82em;
                         margin-left: 1em;
                     }
-                }
                 }
 
         

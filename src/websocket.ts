@@ -15,6 +15,12 @@ export default eventHandler({
         async close(peer) {
             socket_closed()
             peer.publish(key_for_room_channel('lobby'), nb_connected_msg())
+
+            try {
+                await dispatch_peer(peer, JSON.stringify({ path: 'leave' }))
+            } catch (e) {
+                log_websocket_error(e)
+            }
         },
         async message(peer, data) {
             let text = data.text()
@@ -23,7 +29,15 @@ export default eventHandler({
                 return
             }
 
-            dispatch_peer(peer, text)
+            try {
+                await dispatch_peer(peer, text)
+            } catch (e) {
+                log_websocket_error(e)
+            }
         }
     })
 })
+
+const log_websocket_error = (e: unknown) => {
+    console.error(`[Websocket Error] ` + e)
+}

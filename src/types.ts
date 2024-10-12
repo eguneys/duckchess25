@@ -5,6 +5,17 @@ export type UserId = string
 export type GameId = string
 export type ProfileId = string
 
+
+
+export type UserJsonView = {
+    username: string,
+    rating: number,
+    is_online: boolean,
+    nb_games: number
+}
+
+
+
 export const time_controls = ['threetwo', 'fivefour', 'tenzero', 'twentyzero']
 
 export type TimeControl = typeof time_controls[number]

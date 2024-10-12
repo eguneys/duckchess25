@@ -6,7 +6,7 @@ import { createEffect, createSignal, on, onCleanup, onMount, Show, Suspense, use
 import "~/app.scss";
 import './User.scss'
 import { SocketContext, SocketProvider } from "~/components/socket"
-import { getProfile, getUser, resetUser } from "~/components/cached"
+import { getUser, getUserJsonView, resetUser } from "~/components/cached"
 
 export default function Home() {
     const params = useParams()
@@ -16,7 +16,7 @@ export default function Home() {
         page('site')
     })
 
-    let profile = createAsync(() => getProfile(params.username))
+    let user_json = createAsync(() => getUserJsonView(params.username))
     let user = createAsync(() => getUser())
     createEffect(on(() => params.username, () => {
         reconnect()
@@ -26,7 +26,7 @@ export default function Home() {
         "use server"
         let user = await resetUser()
 
-        return redirect(`/u/${user.username}`, { revalidate: [getUser.key, getProfile.key]})
+        return redirect(`/u/${user.username}`, { revalidate: [getUser.key, getUserJsonView.key]})
     }))
 
     return (<>
@@ -35,13 +35,13 @@ export default function Home() {
 
             <div class='section'>
                 <Suspense>
-                    <Show when={profile()} fallback={
+                    <Show when={user_json()} fallback={
                         <button onClick={() => action_reset_profile()}>Reset Profile</button>
                     }>{profile =>
                             <>
                                 <div class='head'>
                                     <h1>
-                                        <span class='online user-link'>
+                                        <span class={'user-link ' + (profile().is_online ? 'online' : 'offline')}>
                                             <i class='line'></i>
                                             {params.username}</span>
                                         <span class='rating'>{profile().rating}</span>

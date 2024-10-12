@@ -1,8 +1,9 @@
 "use server"
 import { getCookie, setCookie } from "vinxi/http";
-import { session_by_id, game_by_id, create_user, drop_user_by_id, new_user, Profile, profile_by_username, User, user_by_id, DbGame, create_session, new_session, update_session, Session } from "./db";
-import { Board_decode, Castles_decode, GameId, Player, Pov, SessionId, UserId } from "./types";
+import { session_by_id, game_by_id, create_user, drop_user_by_id, new_user, Profile, profile_by_username, User, user_by_id, DbGame, create_session, new_session, update_session, Session, user_by_username } from "./db";
+import { Board_decode, Castles_decode, GameId, Player, Pov, SessionId, UserId, UserJsonView } from "./types";
 import { Board, Color, DuckChess, makeFen } from "duckops";
+import { RoomCrowds, socket_closed } from "./handlers/nb_connecteds";
 
 export type UserSession = {
   user_id: string
@@ -42,6 +43,7 @@ export const resetUser = async(): Promise<User> => {
 
   const user_id = session.user_id
   if (user_id) {
+    //RoomCrowds.Instance.disconnect_all(user_id)
     await drop_user_by_id(user_id)
   } 
 
@@ -84,6 +86,38 @@ export const getUserById = async (id: UserId): Promise<User | undefined> => {
 
 export const getProfile = async (username: string): Promise<Profile | undefined> => {
   return await profile_by_username(username)
+}
+
+export const getUserJsonViewByUsername = async (username: string): Promise<UserJsonView | undefined> => {
+  let u = await user_by_username(username)
+  if (!u) {
+    return undefined
+  }
+  return getUserJsonViewByUser(u)
+}
+
+export const getUserJsonView = async (id: UserId): Promise<UserJsonView | undefined> => {
+  let u = await getUserById(id)
+  if (!u) {
+    return undefined
+  }
+  return getUserJsonViewByUser(u)
+}
+
+const getUserJsonViewByUser = async (u: User): Promise<UserJsonView | undefined> => {
+  let p = await getProfile(u.username)
+
+  if (!p) {
+    return undefined
+  }
+
+  return {
+    username: u.username,
+    rating: p.rating,
+    nb_games: p.nb_games,
+    is_online: false
+  }
+
 }
 
 export const getGame = async (id: GameId): Promise<DbGame | undefined> => {

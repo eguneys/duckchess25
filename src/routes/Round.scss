@@ -10,7 +10,7 @@ main.round {
     'board user-bot'
     'board .';
 
-    grid-template-columns: $col-uniboard-width auto;
+    grid-template-columns: $col-uniboard-width minmax(300px, 400px);
     grid-template-rows: auto;
 
     .board {
@@ -31,11 +31,11 @@ main.round {
 
     .user-bot, .user-top {
         display: flex;
-        gap: 1em;
         border-radius: 3px;
         background: linear-gradient($primary-dark2, $text-dark 40%);
         color: $text-light;
         padding: 1em;
+        align-items: center;
 
         .username {
             text-align: left;

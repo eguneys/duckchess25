@@ -10,42 +10,26 @@ import { User } from "~/db"
 
 export async function dispatch_peer(peer: Peer, data: string) {
 
-    let subbed_sid = [...peer._subscriptions].find(_ => _.includes('sid'))
-    let subbed_path = [...peer._subscriptions].find(_ => _.includes('room'))
+    const subbed_sid = [...peer._subscriptions].find(_ => _.includes('sid'))
 
     let sid: SessionId
-    let old_path = subbed_path ? subbed_path.slice(5) : undefined
-    let path = subbed_path ? subbed_path.slice(5) : 'site'
 
-    let message
+    let message = JSON.parse(data)
     
-    if (subbed_sid && subbed_path) {
+    if (subbed_sid) {
         sid = subbed_sid.slice(4)
-        message = JSON.parse(data)
-
-
-        if (typeof message === 'object' && typeof message.path === 'string') {
-            path = message.path
-        }
-
 
     } else {
-
-        let parsed
-
-        parsed = JSON.parse(data)
-
-        if (typeof parsed !== 'object') {
+        if (typeof message !== 'object') {
             throw 'Bad parse ' + data
         }
 
 
-        if (!parsed.sid || typeof parsed.sid !== 'string' || !parsed.path || typeof parsed.path !== 'string') {
-            throw 'Bad sid ' + parsed
+        if (!message.sid || typeof message.sid !== 'string') {
+            throw 'Bad sid ' + message
         }
 
-        path = parsed.path
-        sid = parsed.sid
+        sid = message.sid
     }
 
     let session = await getSessionById(sid)
@@ -60,10 +44,23 @@ export async function dispatch_peer(peer: Peer, data: string) {
         throw "No user for dispatch_peer " + sid
     }
 
+
+    const subbed_path = [...peer._subscriptions].find(_ => _.includes('room'))
+    let old_path = subbed_path ? subbed_path.slice(5) : undefined
+    let path = subbed_path ? subbed_path.slice(5) : 'site'
+
+
+    if (typeof message === 'object' && typeof message.path === 'string') {
+        path = message.path
+    }
+
+
     if (!old_path || old_path !== path) {
         if (old_path) dispatch_path(old_path, user, peer).leave()
-        dispatch_path(path, user, peer).join()
-        peer.subscribe('sid-' + sid)
+        if (path !== 'leave') {
+            dispatch_path(path, user, peer).join()
+            peer.subscribe('sid-' + sid)
+        }
     }
 
     if (message) {

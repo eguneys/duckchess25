@@ -13,6 +13,7 @@ db.pragma('journal_mode = WAL')
 
 export type DbGame = {
   id: GameId,
+  created_at: EpochTimeStamp,
   white: UserId,
   black: UserId,
   clock: TimeControl,
@@ -44,6 +45,8 @@ type DbGameMoveUpdate = {
 
 export type User = {
   id: UserId,
+  created_at: EpochTimeStamp,
+  seen_at: EpochTimeStamp,
   username: string,
   lichess_token: string | null,
 }
@@ -77,6 +80,7 @@ export const create_game = (white: UserId, black: UserId, clock: TimeControl): D
 
   return {
     id: gen_id() + gen_id().slice(0, 4),
+    created_at: Date.now(),
     white,
     black,
     clock,
@@ -100,6 +104,8 @@ export const create_user = async (): Promise<User> => {
   }
   return {
     id: gen_id(),
+    created_at: Date.now(),
+    seen_at: Date.now(),
     username,
     lichess_token: null
   }
@@ -122,7 +128,9 @@ async function create_databases() {
   )`
   const create_users = `CREATE TABLE IF NOT EXISTS 
   users 
-  ("id" TEXT PRIMARY KEY, "username" TEXT, "lichess_token" TEXT)`
+  ("id" TEXT PRIMARY KEY, 
+  "created_at" NUMBER, "seen_at" NUMBER,
+  "username" TEXT, "lichess_token" TEXT)`
 
   const create_profiles = `CREATE TABLE IF NOT EXISTS 
   profiles 
@@ -132,6 +140,7 @@ async function create_databases() {
   const create_games = `CREATE TABLE IF NOT EXISTS 
   games 
   ("id" TEXT PRIMARY KEY, 
+  "created_at" NUMBER,
   "white" TEXT, 
   "black" TEXT, 
   "status" NUMBER,
@@ -178,7 +187,7 @@ export async function update_session(u: { id: SessionId, user_id: UserId }) {
 
 export async function new_game(game: DbGame) {
     await db.prepare(`INSERT INTO games VALUES (
-      @id, @white, @black, @status,
+      @id, @created_at, @white, @black, @status,
       @cycle_length, @rule50_ply, @board, @sans,
       @halfmoves, @fullmoves, @turn, @castles,
       @epSquare)`).run(game)
@@ -206,7 +215,7 @@ export async function make_game_move(u: DbGameMoveUpdate) {
 
 export async function new_user(user: User) {
     await db.prepare(`INSERT INTO users VALUES 
-      (@id, @username, @lichess_token)`).run(user)
+      (@id, @created_at, @seen_at, @username, @lichess_token)`).run(user)
     await new_profile(create_profile(user))
 }
 

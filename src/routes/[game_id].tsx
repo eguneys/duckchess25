@@ -83,14 +83,14 @@ function SideView(props: { player: Player, opponent: Player }) {
   const player = createMemo(() => props.player)
   const opponent = createMemo(() => props.opponent)
   return (<>
-    <div class='user-top'>
-      <span class='on-game'></span>
+    <div class='user-top user-link online'>
+      <i class='line'></i>
       <span class='username'>{opponent().username}</span>
       <span class='rating'>{opponent().rating}</span>
     </div>
     <Moves />
-    <div class='user-bot'>
-      <span class='on-game'></span>
+    <div class='user-bot user-link offline'>
+      <i class='line'></i>
       <span class='username'>{player().username}</span>
       <span class='rating'>{player().rating}</span>
     </div>

@@ -116,3 +116,31 @@ nav {
   content: attr(data-icon);
   opacity: 0.9;
 }
+
+.user-link {
+
+  i.line {
+    color: $text-light;
+    opacity: .5;
+    display: inline-block;
+    width: 1.5em;
+    text-align: center;
+    vertical-align: top;
+  }
+
+
+  &.online .line {
+    color: $c-good;
+    opacity: .9;
+  }
+
+  &.online .line::before {
+    content: "";
+  }
+
+  .line::before {
+    content: "";
+  }
+
+
+}
