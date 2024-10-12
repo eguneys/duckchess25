@@ -3,7 +3,6 @@ import { getCookie, setCookie } from "vinxi/http";
 import { session_by_id, game_by_id, create_user, drop_user_by_id, new_user, Profile, profile_by_username, User, user_by_id, DbGame, create_session, new_session, update_session, Session, user_by_username } from "./db";
 import { Board_decode, Castles_decode, GameId, Player, Pov, SessionId, UserId, UserJsonView } from "./types";
 import { Board, Color, DuckChess, makeFen } from "duckops";
-import { RoomCrowds, socket_closed } from "./handlers/nb_connecteds";
 
 export type UserSession = {
   user_id: string
@@ -43,7 +42,6 @@ export const resetUser = async(): Promise<User> => {
 
   const user_id = session.user_id
   if (user_id) {
-    //RoomCrowds.Instance.disconnect_all(user_id)
     await drop_user_by_id(user_id)
   } 
 
@@ -112,6 +110,7 @@ const getUserJsonViewByUser = async (u: User): Promise<UserJsonView | undefined>
   }
 
   return {
+    id: u.id,
     username: u.username,
     rating: p.rating,
     nb_games: p.nb_games,

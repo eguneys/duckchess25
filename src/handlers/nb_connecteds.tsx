@@ -1,6 +1,8 @@
 import { createContext, JSX } from "solid-js"
-import { user_by_id } from "~/db"
+import { dropped_users_in_last_minute, user_by_id } from "../db"
 import { UserId } from "~/types"
+
+const CLEANUP_SCHEDULE_TIME = 1000
 
 let _nb_connected = 0
 let _nb_games = 0
@@ -18,6 +20,7 @@ function nb_games() {
 }
 
 export function socket_opened() {
+    RoomCrowds.Instance.schedule_cleanup()
     _nb_connected += 1
 }
 
@@ -27,9 +30,36 @@ export function socket_closed() {
 
 
 export class RoomCrowds {
+
+    static Instance = new RoomCrowds()
+
+    private constructor() {}
+
     i = Math.random()
 
     _rooms: Map<string, Crowd> = new Map()
+
+    _cleanup_schedule?: NodeJS.Timeout
+
+    schedule_cleanup = () => {
+        if (this._cleanup_schedule !== undefined) {
+            return
+        }
+        clearTimeout(this._cleanup_schedule)
+
+        this._cleanup_schedule = setTimeout(() => {
+            this._cleanup_schedule = undefined
+            this.cleanup_now()
+            this.schedule_cleanup()
+        }, CLEANUP_SCHEDULE_TIME)
+    }
+
+    cleanup_now = async () => {
+        let us = await dropped_users_in_last_minute()
+        for (let room of this._rooms.values()) {
+            us.forEach(u => room.disconnect(u.id))
+        }
+    }
 
     get_crowd(room: string) {
         let res =  this._rooms.get(room)
@@ -114,7 +144,6 @@ class Crowd {
     }
 
     is_user_online(id: UserId) {
-        console.log('is_user_online', id, this._users)
         return this._users.has(id)
     }
 
@@ -124,9 +153,7 @@ class Crowd {
     }
 
     disconnect(id: UserId) {
-        console.log('disconnected', this._users, id)
         let res = this._users.get(id)
-
         if (!res) {
             return
         }
@@ -137,11 +164,4 @@ class Crowd {
             this._users.set(id, res - 1)
         }
     }
-}
-
-
-export const CrowdContext = createContext<RoomCrowds>()
-
-export const Provider = (props: { children: JSX.Element }) => {
-    <CrowdContext.Provider value={new RoomCrowds()}>{props.children}</CrowdContext.Provider>
 }

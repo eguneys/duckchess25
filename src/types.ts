@@ -8,6 +8,7 @@ export type ProfileId = string
 
 
 export type UserJsonView = {
+    id: UserId,
     username: string,
     rating: number,
     is_online: boolean,

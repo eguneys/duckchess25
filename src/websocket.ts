@@ -5,7 +5,7 @@ import { nb_connected_msg, socket_closed, socket_opened } from "./handlers/nb_co
 import { key_for_room_channel, peer_send } from "./handlers/dispatch";
 
 export default eventHandler({
-    handler: () => {},
+    handler: (e) => {},
     websocket: defineWebSocket({
         async open(peer) {
             socket_opened()

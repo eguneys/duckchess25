@@ -49,6 +49,7 @@ export type User = {
   seen_at: EpochTimeStamp,
   username: string,
   lichess_token: string | null,
+  is_dropped: number | null
 }
 
 export type Profile = {
@@ -107,7 +108,8 @@ export const create_user = async (): Promise<User> => {
     created_at: Date.now(),
     seen_at: Date.now(),
     username,
-    lichess_token: null
+    lichess_token: null,
+    is_dropped: null
   }
 }
 
@@ -130,7 +132,8 @@ async function create_databases() {
   users 
   ("id" TEXT PRIMARY KEY, 
   "created_at" NUMBER, "seen_at" NUMBER,
-  "username" TEXT, "lichess_token" TEXT)`
+  "username" TEXT, "lichess_token" TEXT,
+  "is_dropped" NUMBER)`
 
   const create_profiles = `CREATE TABLE IF NOT EXISTS 
   profiles 
@@ -215,7 +218,7 @@ export async function make_game_move(u: DbGameMoveUpdate) {
 
 export async function new_user(user: User) {
     await db.prepare(`INSERT INTO users VALUES 
-      (@id, @created_at, @seen_at, @username, @lichess_token)`).run(user)
+      (@id, @created_at, @seen_at, @username, @lichess_token, @is_dropped)`).run(user)
     await new_profile(create_profile(user))
 }
 
@@ -229,10 +232,13 @@ export async function user_by_username(username: string) {
     return rows
 }
 
-
-
 export async function drop_user_by_id(user_id: string) {
   //await db.prepare(`DELETE FROM users WHERE id = ?`).run(user_id)
+  await db.prepare(`UPDATE users set is_dropped = ? where id = ?`).run(Date.now(), user_id)
+}
+
+export async function dropped_users_in_last_minute() {
+  return await db.prepare<number, { id: UserId }>(`SELECT id from users WHERE is_dropped >= ?`).all(Date.now() - 1000 * 60)
 }
 
 

@@ -1,7 +1,6 @@
 import { User } from "~/db"
 import { UserId } from "~/types"
-import { CrowdContext, nb_connected_msg, RoomCrowds } from "./nb_connecteds"
-import { useContext } from "solid-js"
+import { nb_connected_msg, RoomCrowds } from "./nb_connecteds"
 
 export type Channel = string
 export type Message = any
@@ -41,9 +40,7 @@ export abstract class Dispatch implements IDispatch {
         readonly peer: Peer) {}
 
     join() {
-        let CC = useContext(CrowdContext)!
-        console.log(CC)
-        CC.connect(this.room, this.user.id)
+        RoomCrowds.Instance.connect(this.room, this.user.id)
         this.peer.subscribe(key_for_users_channel(this.user.id))
         this.peer.subscribe(key_for_room_channel(this.room))
 
@@ -52,10 +49,14 @@ export abstract class Dispatch implements IDispatch {
     }
 
     leave() {
-        //RoomCrowds.Instance.disconnect(this.room, this.user.id)
+        RoomCrowds.Instance.disconnect(this.room, this.user.id)
         this.peer._subscriptions.forEach(_ => this.peer.unsubscribe(_))
         this.publish_channel(key_for_room_channel('lobby'), nb_connected_msg())
         this._leave()
+    }
+
+    publish_peer(data: Message) {
+        this.peer.send(data)
     }
 
     publish_channel(channel: Channel, data: Message, only_rest?: true) {

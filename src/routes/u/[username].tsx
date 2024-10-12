@@ -11,7 +11,7 @@ import { getUser, getUserJsonView, resetUser } from "~/components/cached"
 export default function Home() {
     const params = useParams()
 
-    let { send, page, cleanup, reconnect } = useContext(SocketContext)!
+    let { receive, send, page, cleanup, reconnect } = useContext(SocketContext)!
     onMount(() => {
         page('site')
     })
@@ -29,6 +29,27 @@ export default function Home() {
         return redirect(`/u/${user.username}`, { revalidate: [getUser.key, getUserJsonView.key]})
     }))
 
+    createEffect(() => {
+        params.username
+        let u = user_json()
+        if (u) {
+            send({ t: 'is_online', d: u.id })
+        }
+    })
+
+    const [is_online, set_is_online] = createSignal(false)
+
+    let handlers = {
+        is_online(is_online: boolean) {
+            set_is_online(is_online)
+        }
+    }
+
+    receive(handlers)
+    onCleanup(() => {
+        cleanup(handlers)
+    })
+
     return (<>
         <main class='profile'>
             <Title>{params.username}</Title>
@@ -36,12 +57,12 @@ export default function Home() {
             <div class='section'>
                 <Suspense>
                     <Show when={user_json()} fallback={
-                        <button onClick={() => action_reset_profile()}>Reset Profile</button>
+                        <button onClick={() => { action_reset_profile() }}>Reset Profile</button>
                     }>{profile =>
                             <>
                                 <div class='head'>
                                     <h1>
-                                        <span class={'user-link ' + (profile().is_online ? 'online' : 'offline')}>
+                                        <span class={'user-link ' + (is_online() ? 'online' : 'offline')}>
                                             <i class='line'></i>
                                             {params.username}</span>
                                         <span class='rating'>{profile().rating}</span>

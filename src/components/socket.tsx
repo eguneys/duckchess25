@@ -174,7 +174,7 @@ class StrongSocket {
 type Send = (_: any) => void
 type Receive = (_: Handlers) => void
 
-export const SocketContext = createContext<{ send: Send, receive: Receive, cleanup: Receive, page: (path: string, params?: string) => void, reconnect: () => void, is_offline: () => boolean }>()
+export const SocketContext = createContext<{ send: Send, receive: Receive, cleanup: Receive, page: (path: string, params?: string) => void, reconnect: () => void, disconnect: () => void, is_offline: () => boolean }>()
 
 
 export const SocketProvider = (props: { children: JSX.Element }) => {
@@ -204,6 +204,9 @@ export const SocketProvider = (props: { children: JSX.Element }) => {
         reconnect() {
             socket.disconnect()
             socket.connect()
+        },
+        disconnect() {
+            socket.disconnect()
         },
         is_offline() {
             return socket.is_offline
