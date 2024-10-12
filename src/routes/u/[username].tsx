@@ -1,7 +1,7 @@
 import { action, cache, createAsync, redirect, useAction, useBeforeLeave, useParams } from "@solidjs/router"
 import { Profile, profile_by_username } from "../../db"
 import { Title } from "@solidjs/meta"
-import { createEffect, createSignal, on, onCleanup, onMount, Show, Suspense, useContext } from "solid-js"
+import { createEffect, createSignal, on, onCleanup, onMount, Show, Suspense, untrack, useContext } from "solid-js"
 
 import "~/app.scss";
 import './User.scss'
@@ -20,6 +20,10 @@ export default function Home() {
     let user = createAsync(() => getUser())
     createEffect(on(() => params.username, () => {
         reconnect()
+        let u = user_json()
+        if (u) {
+            send({ t: 'is_online', d: u.id })
+        }
     }, { defer: true }))
 
     let action_reset_profile = useAction(action(async() => {
@@ -28,14 +32,6 @@ export default function Home() {
 
         return redirect(`/u/${user.username}`, { revalidate: [getUser.key, getUserJsonView.key]})
     }))
-
-    createEffect(() => {
-        params.username
-        let u = user_json()
-        if (u) {
-            send({ t: 'is_online', d: u.id })
-        }
-    })
 
     const [is_online, set_is_online] = createSignal(false)
 

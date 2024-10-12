@@ -4,6 +4,7 @@ import { Board, DuckChess, GameResult, makeFen, makeSan, parseFen, parseSan, par
 import { DbGame, make_game_move, User } from "../db";
 import { Board_encode, Castles_encode, GameStatus } from "../types";
 import { revalidate } from "@solidjs/router";
+import { RoomCrowds } from "./nb_connecteds";
 
 const history_step_builder = (sans: string[]) => {
     let dd = DuckChess.default()
@@ -23,7 +24,6 @@ const history_step_builder = (sans: string[]) => {
 export class Round extends Dispatch {
 
     constructor(user: User, peer: Peer, readonly params: string) { super(user, `round&${params}`, peer) }
-
 
     get game_id() {
         return this.params
@@ -130,11 +130,12 @@ export class Round extends Dispatch {
     }
 
     _join() {
-
+        let ids = RoomCrowds.Instance.get_crowd_ids(this.room)
+        this.publish_room({ t: 'crowd', d: ids })
     }
 
-
     _leave() {
-
+        let ids = RoomCrowds.Instance.get_crowd_ids(this.room)
+        this.publish_room({ t: 'crowd', d: ids })
     }
 }

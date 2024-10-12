@@ -4,7 +4,7 @@ import { HttpStatusCode } from "@solidjs/start";
 import { createEffect, createMemo, createSignal, onCleanup, onMount, Show, Suspense, useContext } from "solid-js";
 import { DbGame, User } from "~/db";
 import { getPov, getUser } from "~/components/cached";
-import { Player, Pov } from '~/types'
+import { Player, Pov, UserId } from '~/types'
 
 import '~/app.scss'
 import './Round.scss'
@@ -82,14 +82,21 @@ function PovView(props: { pov: Pov }) {
 function SideView(props: { player: Player, opponent: Player }) {
   const player = createMemo(() => props.player)
   const opponent = createMemo(() => props.opponent)
+
+  let { crowd, cleanup } = useContext(SocketContext)!
+
+
+  const is_player_online = createMemo(() => crowd().includes(player().id))
+  const is_opponent_online = createMemo(() => crowd().includes(opponent().id))
+
   return (<>
-    <div class='user-top user-link online'>
+    <div class={'user-top user-link ' + (is_player_online() ? 'online' : 'offline')}>
       <i class='line'></i>
       <span class='username'>{opponent().username}</span>
       <span class='rating'>{opponent().rating}</span>
     </div>
     <Moves />
-    <div class='user-bot user-link offline'>
+    <div class={'user-bot user-link ' + (is_opponent_online() ? 'online' : 'offline')}>
       <i class='line'></i>
       <span class='username'>{player().username}</span>
       <span class='rating'>{player().rating}</span>

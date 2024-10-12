@@ -1,4 +1,5 @@
 import { createContext, createSignal, JSX, onCleanup, onMount } from "solid-js";
+import { UserId } from "~/types";
 
 const getCookieValue = (name: string) => (
   document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)')?.pop() || ''
@@ -25,6 +26,9 @@ class StrongSocket {
     private default_handlers: Handlers = { ng: () => {} }
     private page_handlers: Handlers = {}
 
+    add_default_handlers(_: Handlers) {
+        Object.assign(this.default_handlers, _)
+    }
 
     add_page_handlers(_: Handlers) {
         Object.assign(this.page_handlers, _)
@@ -174,12 +178,30 @@ class StrongSocket {
 type Send = (_: any) => void
 type Receive = (_: Handlers) => void
 
-export const SocketContext = createContext<{ send: Send, receive: Receive, cleanup: Receive, page: (path: string, params?: string) => void, reconnect: () => void, disconnect: () => void, is_offline: () => boolean }>()
+type SocketReturnType = { 
+    send: Send, 
+    receive: Receive, 
+    cleanup: Receive, 
+    page: (path: string, params?: string) => void, 
+    reconnect: () => void, 
+    disconnect: () => void, 
+    is_offline: () => boolean, 
+    crowd: () => UserId[]
+ }
+
+export const SocketContext = createContext<SocketReturnType>()
 
 
 export const SocketProvider = (props: { children: JSX.Element }) => {
-    let handlers: Handlers = {}
+    let [crowd, set_crowd] = createSignal<UserId[]>([])
     let socket = StrongSocket.create()
+
+    socket.add_default_handlers({
+        crowd(ids: UserId[]) {
+            set_crowd(ids)
+        }
+    })
+
     let value = {
         send: (msg: any) => {
             socket.send(msg)
@@ -210,7 +232,8 @@ export const SocketProvider = (props: { children: JSX.Element }) => {
         },
         is_offline() {
             return socket.is_offline
-        }
+        },
+        crowd
     }
     onMount(() => {
         socket.connect()

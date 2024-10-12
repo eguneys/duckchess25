@@ -30,7 +30,6 @@ export function socket_closed() {
 
 
 export class RoomCrowds {
-
     static Instance = new RoomCrowds()
 
     private constructor() {}
@@ -70,6 +69,12 @@ export class RoomCrowds {
         }
         return res
     }
+
+    get_crowd_ids(room: string) {
+        return this.get_crowd(room).get_users()
+    }
+
+
 
     get nb_users() {
         let res = 0
@@ -141,6 +146,10 @@ class Crowd {
 
     get is_empty() {
         return this.nb_users === 0
+    }
+
+    get_users() {
+        return [...this._users.keys()]
     }
 
     is_user_online(id: UserId) {
