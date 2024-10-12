@@ -18,7 +18,7 @@ class StrongSocket {
     }
 
     get href() {
-        let protocol = location.protocol === 'https' ? 'wss': 'ws'
+        let protocol = location.protocol === 'https:' ? 'wss': 'ws'
         return `${protocol}://${location.host}/_ws`
     }
 
