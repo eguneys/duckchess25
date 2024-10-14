@@ -1,19 +1,41 @@
 import { Title } from "@solidjs/meta";
 import { A, createAsync, useParams } from "@solidjs/router";
 import { HttpStatusCode } from "@solidjs/start";
-import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show, Signal, Suspense, useContext } from "solid-js";
+import { createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show, Signal, Suspense, useContext } from "solid-js";
 import { DbGame, User } from "~/db";
 import { getPov, getUser } from "~/components/cached";
-import { Player, Pov, UserId } from '~/types'
+import { GameStatus, Player, Pov, UserId } from '~/types'
 
 import '~/app.scss'
 import './Round.scss'
 
 
-import { DuckChess, FenError, INITIAL_FEN, makeFen, makeUci, parseSan, PositionHistory } from "duckops";
+import { Color, DuckChess, FenError, INITIAL_FEN, makeFen, makeUci, parseFen, parseSan, PositionHistory } from "duckops";
 import { DuckBoard } from "~/components/DuckBoard";
 import { SocketContext } from "~/components/socket";
 import { makeEventListener } from "@solid-primitives/event-listener";
+import createRAF from "@solid-primitives/raf";
+
+type GameEndReason = {
+  reason: string,
+  winner?: Color
+}
+
+const capitalize = (color: Color) => color === 'black' ? 'Black' : 'White'
+const opposite = (color: Color) => color === 'black' ? 'white': 'black'
+
+const make_game_end_reason = (game: { status: GameStatus, winner?: Color }) => {
+  switch (game.status) {
+    case GameStatus.Aborted:
+      return { reason: 'Game aborted.' }
+    case GameStatus.Ended:
+      return { reason: 'Game ended.', winner: game.winner }
+    case GameStatus.Outoftime:
+      return { reason: `${capitalize(opposite(game.winner!))} is out of time.`, winner: game.winner }
+  }
+}
+
+const fen_color = (fen: string) => parseFen(fen).unwrap().turn
 
 type Step = {
   uci: string,
@@ -51,6 +73,14 @@ class Steps {
 
   get steps() {
     return this._steps[0]()
+  }
+
+  get last_step() {
+    return this.steps[this.steps.length - 1]
+  }
+
+  get last_fen() {
+    return this.last_step?.fen ?? INITIAL_FEN
   }
 
   get selected_ply() {
@@ -110,9 +140,14 @@ function PovView(props: { pov: Pov }) {
   let { send, page, receive, cleanup } = useContext(SocketContext)!
 
   let handlers = {
-    move(step: { uci: string, san: string, fen: string }) {
-      steps.add_step(step)
+    flag(flag: { status: GameStatus, winner: Color }) {
+      set_game_end_reason(make_game_end_reason(flag))
+    },
+    move(move: {step: { uci: string, san: string, fen: string }, wclock: number, bclock: number } ) {
+      steps.add_step(move.step)
       steps.selected_ply = steps.steps.length
+      set_w_clock(move.wclock)
+      set_b_clock(move.bclock)
     }
   }
 
@@ -134,9 +169,17 @@ function PovView(props: { pov: Pov }) {
   const pov = createMemo(() => props.pov)
   const player = createMemo(() => pov().player)
   const opponent = createMemo(() => pov().opponent)
+  const [wclock, set_w_clock] = createSignal(player().color === 'white' ? player().clock: opponent().clock)
+  const [bclock, set_b_clock] = createSignal(player().color === 'black' ? player().clock: opponent().clock)
+  const player_clock = createMemo(() => player().color === 'white' ? wclock(): bclock())
+  const opponent_clock = createMemo(() => opponent().color === 'white' ? wclock(): bclock())
   const [orientation, set_orientation] = createSignal(player().color)
   const steps = Steps.make(pov().game.sans)
   const fen = createMemo(() => steps.selected_fen)
+
+  const clock_running_color = createMemo(() => pov().game.status === GameStatus.Started ? fen_color(steps.last_fen) : undefined)
+
+  const [game_end_reason, set_game_end_reason] = createSignal(make_game_end_reason(pov().game))
 
   const go_to_ply = (ply: number) => {
     steps.selected_ply = ply
@@ -145,6 +188,10 @@ function PovView(props: { pov: Pov }) {
   const set_selected_ply = (_: number) => steps.selected_ply = _
 
   const view_only = createMemo(() => {
+    if (game_end_reason()) {
+      return true
+    }
+
     let color = player().color
 
     const is_last = selected_ply() === steps.steps.length
@@ -206,22 +253,47 @@ function PovView(props: { pov: Pov }) {
   })
 
 
+  let [can_takeback, set_can_takeback] = createSignal(false)
 
   return (<>
     <main class='round'>
       <Title>Play </Title>
       <div class='board' onWheel={e => on_wheel(e)}>
-        <DuckBoard view_only={view_only()} orientation={orientation()} on_user_move={on_user_move} do_uci={do_uci()} do_takeback={do_takeback()} fen={fen()} />
+        <DuckBoard can_takeback={set_can_takeback} view_only={view_only()} orientation={orientation()} on_user_move={on_user_move} do_uci={do_uci()} do_takeback={do_takeback()} fen={fen()} />
       </div>
-      <SideView player={player()} opponent={opponent()} steps={steps.steps} set_selected_ply={set_selected_ply} selected_ply={selected_ply()} go_to_ply={go_to_ply} />
+      <SideView 
+        game_end_reason={game_end_reason()}
+        clock_running_color={clock_running_color()}
+      do_takeback={set_do_takeback}
+        can_takeback={can_takeback()}
+        player={player()}
+        opponent={opponent()}
+        player_clock={player_clock()}
+        opponent_clock={opponent_clock()}
+        steps={steps.steps}
+        set_selected_ply={set_selected_ply} selected_ply={selected_ply()} go_to_ply={go_to_ply} />
     </main>
   </>)
 }
 
-function SideView(props: { player: Player, opponent: Player, steps: Step[], set_selected_ply: (_: number) => void, selected_ply: number, go_to_ply: (_: number) => void }) {
+function SideView(props: { do_takeback: () => void, 
+  game_end_reason?: GameEndReason,
+  can_takeback: boolean, 
+  player: Player, 
+  opponent: Player, 
+  player_clock: number,
+  opponent_clock: number,
+  clock_running_color?: Color,
+  steps: Step[], 
+  set_selected_ply: (_: number) => void, 
+  selected_ply: number, 
+  go_to_ply: (_: number) => void }) {
   const steps = createMemo(() => props.steps)
   const player = createMemo(() => props.player)
   const opponent = createMemo(() => props.opponent)
+
+  const player_clock = createMemo(() => props.player_clock)
+  const opponent_clock = createMemo(() => props.opponent_clock)
 
   let { crowd, cleanup } = useContext(SocketContext)!
 
@@ -229,22 +301,91 @@ function SideView(props: { player: Player, opponent: Player, steps: Step[], set_
   const is_player_online = createMemo(() => crowd().includes(player().id))
   const is_opponent_online = createMemo(() => crowd().includes(opponent().id))
 
+  const is_player_clock_running = createMemo(() => player().color === props.clock_running_color)
+  const is_opponent_clock_running = createMemo(() => opponent().color === props.clock_running_color)
+
+  const game_end_reason = createMemo(() => props.game_end_reason)
+
   return (<>
+    <div class='table'></div>
+
     <div class={'user-top user-link ' + (is_player_online() ? 'online' : 'offline')}>
       <i class='line'></i>
       <span class='username'>{opponent().username}</span>
       <span class='rating'>{opponent().rating}</span>
     </div>
     <Moves {...props}/>
+    <div class='rcontrols'>
+      <div class='ricons'>
+        <button onClick={() => props.do_takeback()} disabled={!props.can_takeback} class='fbt takeback-yes'><span data-icon=""></span></button>
+        <button onClick={() => { }} disabled={true} class='fbt resign'><span data-icon=""></span></button>
+      </div>
+    </div>
     <div class={'user-bot user-link ' + (is_opponent_online() ? 'online' : 'offline')}>
       <i class='line'></i>
       <span class='username'>{player().username}</span>
       <span class='rating'>{player().rating}</span>
     </div>
+    <div class='rclock clock-top'>
+      <Time time={opponent_clock()} is_running={is_opponent_clock_running()}/>
+    </div>
+    <div class='rclock clock-bot'>
+      <Time time={player_clock()} is_running={is_player_clock_running()}/>
+    </div>
   </>)
 }
 
-function Moves(props: { steps: Step[], set_selected_ply: (_: number) => void, selected_ply: number, go_to_ply: (_: number) => void }) {
+
+function Time(props: { time: number, is_running: boolean }) {
+
+  const { send } = useContext(SocketContext)!
+
+  const pad2 = (num: number): string => (num < 10 ? '0' : '') + num;
+
+  const [time, set_time] = createSignal(props.time)
+
+  const date = createMemo(() => new Date(time()))
+  let minutes = createMemo(() => pad2(date().getUTCMinutes()))
+  let seconds = createMemo(() => pad2(date().getUTCSeconds()))
+
+  createEffect(on(time, t => {
+    if (t === 0) {
+      send({ t: 'flag'})
+    }
+  }))
+
+  createEffect(on(() => props.time, (t) => set_time(t)))
+
+  onMount(() => {
+    createEffect(on(() => props.is_running, (i => {
+      if (i) {
+        let now = Date.now()
+        const [running, start, stop] = createRAF(() => {
+          let elapsed = Date.now() - now
+          set_time(Math.max(0, time() - elapsed))
+          now = Date.now()
+
+          if (time() === 0) {
+            stop()
+          }
+        })
+        start()
+        onCleanup(() => {
+          stop()
+        })
+      }
+    })))
+  })
+
+  return <>  
+    <div class='time'>
+      {minutes()}<span>:</span>{seconds()}
+    </div>
+    <div class='bar'></div>
+  </>
+}
+
+function Moves(props: { game_end_reason?: GameEndReason, steps: Step[], set_selected_ply: (_: number) => void, selected_ply: number, go_to_ply: (_: number) => void }) {
 
   const selected_ply = createMemo(() => props.selected_ply)
   const grouped = createMemo(() => {
@@ -310,6 +451,13 @@ function Moves(props: { steps: Step[], set_selected_ply: (_: number) => void, se
             }</Show>
           </>
         }</For>
+        <Show when={props.game_end_reason}>{reason => 
+          <div class='result-wrap'>
+            <Show when={reason().winner}>{winner => 
+              <p class='result'> {capitalize(winner())} is victorious. </p>}</Show>
+              <p class='status'>{reason().reason}</p>
+          </div>
+          }</Show>
       </div>
   </div>
   </>)

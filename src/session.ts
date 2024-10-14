@@ -1,7 +1,7 @@
 "use server"
 import { getCookie, setCookie } from "vinxi/http";
 import { session_by_id, game_by_id, create_user, drop_user_by_id, new_user, Profile, profile_by_username, User, user_by_id, DbGame, create_session, new_session, update_session, Session, user_by_username } from "./db";
-import { Board_decode, Castles_decode, GameId, Player, Pov, SessionId, UserId, UserJsonView } from "./types";
+import { Board_decode, Castles_decode, GameId, millis_for_clock, Player, Pov, SessionId, TimeControl, UserId, UserJsonView } from "./types";
 import { Board, Color, DuckChess, makeFen } from "duckops";
 
 export type UserSession = {
@@ -123,7 +123,7 @@ export const getGame = async (id: GameId): Promise<DbGame | undefined> => {
   return await game_by_id(id)
 }
 
-export const getPlayer = async (id: UserId, color: Color): Promise<Player | undefined> => {
+export const getPlayer = async (id: UserId, color: Color, clock: number): Promise<Player | undefined> => {
   let user = await getUserById(id)
 
   if (!user) {
@@ -140,9 +140,11 @@ export const getPlayer = async (id: UserId, color: Color): Promise<Player | unde
     id: user.id,
     username: user.username,
     rating: profile.rating,
-    color
+    color,
+    clock
   }
 }
+
 
 export const getPov = async (id: GameId, user_id: UserId): Promise<Pov | undefined> => {
   let g = await getGame(id)
@@ -152,9 +154,11 @@ export const getPov = async (id: GameId, user_id: UserId): Promise<Pov | undefin
   }
 
   let clock = g.clock
+  let wclock = g.wclock
+  let bclock = g.bclock
 
-  let white = await getPlayer(g.white, 'white')
-  let black = await getPlayer(g.black, 'black')
+  let white = await getPlayer(g.white, 'white', wclock)
+  let black = await getPlayer(g.black, 'black', bclock)
 
   if (!white || !black) {
     return undefined
@@ -182,7 +186,9 @@ export const getPov = async (id: GameId, user_id: UserId): Promise<Pov | undefin
     id,
     fen,
     sans: g.sans === '' ?  [] : g.sans.split(' '),
-    status: g.status
+    status: g.status,
+    winner: g.winner ?? undefined,
+    last_move_time: g.last_move_time
   }
 
   return {

@@ -25,21 +25,25 @@ export enum GameStatus {
   Created = 0,
   Started,
   Ended,
-  Aborted
+  Outoftime,
+  Aborted,
 }
 
 export type Player = {
     id: UserId,
     username: string,
     rating: number,
-    color: Color
+    color: Color,
+    clock: number
 }
 
 export type Game = {
     id: GameId,
     fen: string,
     sans: string[],
-    status: GameStatus
+    status: GameStatus,
+    last_move_time: number
+    winner?: Color,
 }
 
 export type Pov = {
@@ -48,6 +52,40 @@ export type Pov = {
     clock: TimeControl,
     game: Game
 }
+
+
+export const millis_for_increment = (clock: TimeControl) => {
+
+  switch (clock) {
+    case 'threetwo':
+      return 2 * 1000
+    case 'fivefour':
+      return 4 * 1000
+    case 'tenzero':
+      return 0
+    case 'twentyzero':
+      return 0
+  }
+  return 0
+}
+
+
+
+export const millis_for_clock = (clock: TimeControl) => {
+
+  switch (clock) {
+    case 'threetwo':
+      return 3 * 1000 * 60
+    case 'fivefour':
+      return 5 * 1000 * 60
+    case 'tenzero':
+      return 10 * 1000 * 60
+    case 'twentyzero':
+      return 20 * 1000 * 60
+  }
+  return 0
+}
+
 
 export const Castles_decode = (b: Buffer): Castles => {
     function read_square_set(offset: number) {

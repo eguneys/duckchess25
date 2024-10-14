@@ -16,6 +16,7 @@ $text-dark: #464524;
 $text: #938e81;
 $text-light: #faf9f5;
 
+$c-border: #a6a49b;
 
 $c-good: hsl(88, 62%, 37%);
 $c-bad: #be3838;
@@ -34,6 +35,11 @@ $col-uniboard-width: calc(100vh - $site-header-height - 10px);
     font-family: 'lichess';
     font-display: block;
     src: url('/lichess.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Noto Sans';
+  src: local('Noto Sans'), local('NotoSans'), url('/noto-sans-v14-latin-regular.woff2') format('woff2');
 }
 
 %base-font {

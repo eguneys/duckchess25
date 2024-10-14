@@ -76,8 +76,7 @@ export abstract class Dispatch implements IDispatch {
     }
 
     async message(message: Message) {
-
-        this._message(message)
+        await this._message(message)
     }
 
     terminate() {

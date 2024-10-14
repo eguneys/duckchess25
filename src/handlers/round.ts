@@ -1,10 +1,110 @@
 import { Dispatch, Message, Peer, peer_send } from "./dispatch";
 import { getGame, getPov } from "../session";
 import { Board, DuckChess, GameResult, makeFen, makeSan, parseFen, parseSan, parseUci, PositionHistory } from "duckops";
-import { DbGame, make_game_move, User } from "../db";
-import { Board_encode, Castles_encode, GameStatus } from "../types";
+import { DbGame, make_game_move, make_game_outoftime, User } from "../db";
+import { Board_encode, Castles_encode, GameStatus, millis_for_increment, Pov } from "../types";
 import { revalidate } from "@solidjs/router";
 import { RoomCrowds } from "./nb_connecteds";
+
+async function finisher_out_of_time(pov: Pov) {
+    let events = []
+
+    let status = GameStatus.Outoftime
+    let winner = pov.opponent.color
+
+
+    await make_game_outoftime({
+        id: pov.game.id,
+        status,
+        winner
+    })
+
+    events.push({ t: 'flag', d: { status, winner } })
+
+    return events
+}
+
+async function play_uci(pov: Pov, uci: string) {
+
+    let events = []
+    let history = history_step_builder(pov.game.sans)
+    let move = parseUci(uci)
+
+    if (!move) {
+        throw 'Bad Uci ' + uci
+    }
+
+    let before_game = history.last()
+
+    if (before_game.turn !== pov.player.color) {
+        throw 'Not your turn'
+    }
+
+    pov.player.clock += millis_for_increment(pov.clock)
+    let last_move_time = Date.now()
+
+    let [wclock, bclock] = [pov.player.clock, pov.opponent.clock]
+    if (pov.player.color === 'black') {
+        [wclock, bclock] = [bclock, wclock]
+    }
+
+    history.append(move)
+    let result = history.computeGameResult()
+
+    let status = GameStatus.Started
+
+    switch (result) {
+        case GameResult.WHITE_WON:
+        case GameResult.BLACK_WON:
+            status = GameStatus.Ended
+            break
+        case GameResult.DRAW:
+            status = GameStatus.Ended
+            break
+        case GameResult.UNDECIDED:
+            break
+    }
+
+
+    let last = history.last()
+    let board = Board_encode(last.board)
+
+    let san = makeSan(before_game, move)
+    pov.game.sans.push(san)
+    let sans = pov.game.sans.join(' ')
+
+    let cycle_length = last.cycle_length
+    let rule50_ply = last.rule50_ply
+    let halfmoves = last.halfmoves
+    let fullmoves = last.fullmoves
+    let turn = last.turn
+    let castles = Castles_encode(last.castles)
+    let epSquare = last.epSquare ?? null
+
+    let fen = makeFen(last.toSetup())
+
+    await make_game_move({
+        id: pov.game.id,
+        status,
+        cycle_length,
+        rule50_ply,
+        board,
+        sans,
+        halfmoves,
+        fullmoves,
+        turn,
+        castles,
+        epSquare,
+        wclock,
+        bclock,
+        last_move_time
+    })
+
+
+    events.push({ t: 'move', d: { step: { uci, san, fen }, wclock, bclock } })
+
+    return events
+}
 
 const history_step_builder = (sans: string[]) => {
     let dd = DuckChess.default()
@@ -19,6 +119,7 @@ const history_step_builder = (sans: string[]) => {
         return history.last()
     }, history.last())
     return history
+
 }
 
 export class Round extends Dispatch {
@@ -27,14 +128,6 @@ export class Round extends Dispatch {
 
     get game_id() {
         return this.params
-    }
-
-    async positionHistory() {
-        let p = await this.getPov()
-        if (!p) {
-            return
-        }
-        return history_step_builder(p.game.sans)
     }
 
     async getPov() {
@@ -60,73 +153,35 @@ export class Round extends Dispatch {
         }
 
         switch (msg.t) {
+            case 'flag': {
+                let elapsed_time = Date.now() - pov.game.last_move_time
+                pov.player.clock = Math.max(0, pov.player.clock - elapsed_time)
+
+                if (pov.player.clock === 0) {
+                    return this.publish_events(await finisher_out_of_time(pov))
+                }
+            } break
             case 'move': {
+                let pov = await this.getPov()
 
-                let history = await this.positionHistory()
-
-                if (!history) {
-                    throw 'No history'
+                if (!pov) {
+                    throw 'No Pov'
                 }
 
-                let uci = msg.d
-                let move = parseUci(uci)
+                let elapsed_time = Date.now() - pov.game.last_move_time
+                pov.player.clock = Math.max(0, pov.player.clock - elapsed_time)
 
-                if (!move) {
-                    throw 'Bad Move ' + uci
+                if (pov.player.clock === 0) {
+                    return this.publish_events(await finisher_out_of_time(pov))
                 }
 
-                let before_game = history.last()
-                history.append(move)
-                let result = history.computeGameResult()
-
-                let status = GameStatus.Started
-
-                switch (result) {
-                    case GameResult.WHITE_WON:
-                    case GameResult.BLACK_WON:
-                        status = GameStatus.Ended
-                        break
-                    case GameResult.DRAW:
-                        status = GameStatus.Ended
-                        break
-                    case GameResult.UNDECIDED:
-                        break
-                }
-
-                let last = history.last()
-                let board = Board_encode(last.board)
-
-                let san = makeSan(before_game, move)
-                pov.game.sans.push(san)
-                let sans = pov.game.sans.join(' ')
-
-                let cycle_length = last.cycle_length
-                let rule50_ply = last.rule50_ply
-                let halfmoves = last.halfmoves
-                let fullmoves = last.fullmoves
-                let turn = last.turn
-                let castles = Castles_encode(last.castles)
-                let epSquare = last.epSquare ?? null
-
-                let fen = makeFen(last.toSetup())
-
-                await make_game_move({ 
-                    id: this.game_id, 
-                    status,
-                    cycle_length,
-                    rule50_ply,
-                    board,
-                    sans,
-                    halfmoves,
-                    fullmoves,
-                    turn, 
-                    castles,
-                    epSquare
-                })
-
-                this.publish_room({ t: 'move', d: { uci, san, fen } })
+                this.publish_events(await play_uci(pov, msg.d))
             }
         }
+    }
+
+    publish_events(events: any[]) {
+        events.forEach(_ => this.publish_room(_))
     }
 
     _join() {

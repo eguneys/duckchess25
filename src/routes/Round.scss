@@ -5,9 +5,12 @@ main.round {
     display: grid;
 
     grid-template-areas: 'board .'
+    'board clock-top'
     'board user-top'
     'board moves'
+    'board controls'
     'board user-bot'
+    'board clock-bot'
     'board .';
 
     grid-template-columns: $col-uniboard-width minmax(300px, 400px);
@@ -28,6 +31,72 @@ main.round {
     .moves {
         grid-area: moves;
     }
+
+    .rcontrols {
+        grid-area: controls;
+    }
+
+    .clock-top {
+        grid-area: clock-top;
+    }
+
+    .clock-bot {
+        grid-area: clock-bot;
+    }
+
+    .table {
+        grid-area: 3 / 2 / 7 / 3;
+    }
+
+    .rclock {
+        position: relative;
+        display: flex;
+        justify-content: space-between;
+        .time {
+            color: $text-light;
+            background: $primary-dark3;
+            min-width: 3em;
+            font-size: 2.8em;
+            font-weight: bold;
+            padding: 0 0.1em;
+            white-space: nowrap;
+            display: flex;
+            justify-content: center;
+        }
+
+        .bar {
+            display: block;
+            position: absolute;
+            width: 100%;
+            height: 4px;
+            background: $c-good;
+            transform-origin: left;
+        }
+    }
+    
+    .rclock.clock-top .bar {
+        bottom: -4px;
+    }
+
+   .rclock.clock-bottom .bar {
+        top: -4px;
+    }
+
+    .rclock.clock-top .time {
+        border-radius: 6px 6px 0 0;
+    }
+
+    .rclock.clock-bot .time {
+        border-radius: 0 0 6px 6px;
+    }
+
+        .rclock .time,
+        .table {
+            background: $primary-dark3;
+            box-shadow: 0 2px 2px 0 rgba(0, 0, 0, .14),
+                0 3px 1px -2px rgba(0, 0, 0, .2),
+                0 1px 5px 0 rgba(0, 0, 0, .12);
+        }
 
     .user-bot, .user-top {
         display: flex;
@@ -54,10 +123,14 @@ main.round {
     }
 
 
+    .ricons .fbt {
+        font-size: 1.4em;
+        padding: .1em 1em;
+    }
+
     .moves {
         display: flex;
         flex-flow: column;
-        background: $primary-dark;
 
         .buttons {
             flex: 0 0 2.5rem;
@@ -67,31 +140,6 @@ main.round {
             font-size: .9em;
             box-shadow: 0 2px 2px 0 rgba(0,0,0,.14),0 3px 1px -2px rgba(0,0,0,.2),0 1px 5px 0 rgba(0,0,0,.12);
 
-            .fbt {
-                height: 2.5rem;
-                line-height: 2.4rem;
-
-                flex: 0 0 calc(100% / 4);
-                text-align: center;
-
-                text-transform: uppercase;
-                transition: all 150ms;
-                background: none;
-                border: none;
-                outline: none;
-                color: $text-light;
-                cursor: pointer;
-
-                &.disabled {
-                    opacity: .5;
-                    cursor: default;
-                }
-
-                &:hover:not(.disabled) {
-                    background: $c-good;
-                    color: $text-light;
-                }
-            }
         }
 
         .list {
@@ -126,6 +174,54 @@ main.round {
                     background: $accent-light;
                 }
             }
+
+
+            .result-wrap {
+                width: 100%;
+                text-align: center;
+
+
+                .result {
+                    border-top: 1px solid $c-border;
+                    font-weight: bold;
+                    font-size: 1.2em;
+                    padding: 5px 0 3px 0;
+                    margin: 0;
+                }
+
+                .status {
+                    font-style: italic;
+                    margin-bottom: .5em;
+                }
+            }
         }
     }
+
+
+            .fbt {
+                height: 2.5rem;
+                line-height: 2.4rem;
+
+                flex: 0 0 calc(100% / 4);
+                text-align: center;
+
+                text-transform: uppercase;
+                transition: all 150ms;
+                background: none;
+                border: none;
+                outline: none;
+                color: $text-light;
+                cursor: pointer;
+
+                &.disabled,
+                &[disabled] {
+                    opacity: .5;
+                    cursor: default;
+                }
+
+                &:hover:not(.disabled):not([disabled]) {
+                    background: $c-good;
+                    color: $text-light;
+                }
+            }
 }

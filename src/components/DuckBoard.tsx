@@ -192,7 +192,7 @@ const on_piece_equals = (a: OnPiece, b: OnPiece) => {
   return a.piece.file === b.piece.file && a.piece.rank === b.piece.rank
 }
 
-export const DuckBoard = (props: { on_user_move: (uci: string) => void, do_uci: string | undefined, do_takeback: undefined, orientation?: Color, fen: string, view_only?: Color | true }) => {
+export const DuckBoard = (props: { can_takeback: (_: boolean) => void, on_user_move: (uci: string) => void, do_uci: string | undefined, do_takeback: undefined, orientation?: Color, fen: string, view_only?: Color | true }) => {
 
   const view_only = createMemo(() => props.view_only)
 
@@ -201,6 +201,10 @@ export const DuckBoard = (props: { on_user_move: (uci: string) => void, do_uci: 
   const [duckchess, set_duckchess] = createSignal(DuckChess.fromSetupUnchecked(parseFen(props.fen).unwrap()), { equals: false })
 
   const can_move_piece = createMemo(() => (!view_only() || view_only() === duckchess().turn) && move_before_duck() === undefined)
+
+  createEffect(on(move_before_duck, (md) => {
+      props.can_takeback(!!md)
+  }))
 
   createEffect(on(() => props.fen, fen => {
     set_duckchess(DuckChess.fromSetupUnchecked(parseFen(fen).unwrap()))
@@ -558,7 +562,7 @@ export const DuckBoard = (props: { on_user_move: (uci: string) => void, do_uci: 
 
     const on_drop_handle = (e: MouchEvent) => {
 
-      let position = eventPositionWithBounds(e, bounds())
+      let position = eventPositionWithBounds(e, bounds()) ?? drag_move()
       if (position) {
         let dest = abs_to_coord(position, is_flipped())
 

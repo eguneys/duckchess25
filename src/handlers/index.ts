@@ -56,15 +56,15 @@ export async function dispatch_peer(peer: Peer, data: string) {
 
 
     if (!old_path || old_path !== path) {
-        if (old_path) dispatch_path(old_path, user, peer).leave()
+        if (old_path) await dispatch_path(old_path, user, peer).leave()
         if (path !== 'leave') {
-            dispatch_path(path, user, peer).join()
+            await dispatch_path(path, user, peer).join()
             peer.subscribe('sid-' + sid)
         }
     }
 
     if (message) {
-        dispatch_path(path, user, peer).message(message)
+        await (dispatch_path(path, user, peer).message(message))
     }
 }
 

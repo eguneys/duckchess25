@@ -1,6 +1,6 @@
 "use server"
 import { generate_username } from "./gen"
-import { Board_encode, Castles_encode, GameId, GameStatus, ProfileId, SessionId, TimeControl, UserId } from './types'
+import { Board_encode, Castles_encode, GameId, GameStatus, millis_for_clock, ProfileId, SessionId, TimeControl, UserId } from './types'
 import { Board, Color, DuckChess } from 'duckops'
 
 import Database from 'better-sqlite3'
@@ -17,6 +17,9 @@ export type DbGame = {
   white: UserId,
   black: UserId,
   clock: TimeControl,
+  wclock: number,
+  bclock: number,
+  last_move_time: number,
   status: GameStatus,
   cycle_length: number,
   rule50_ply: number,
@@ -26,7 +29,14 @@ export type DbGame = {
   fullmoves: number,
   turn: Color,
   castles: Buffer,
-  epSquare: number | null
+  epSquare: number | null,
+  winner: Color | null
+}
+
+type DbGameOutoftimeUpdate = {
+  id: GameId,
+  status: GameStatus,
+  winner: Color
 }
 
 type DbGameMoveUpdate = {
@@ -40,7 +50,10 @@ type DbGameMoveUpdate = {
   fullmoves: number,
   turn: Color,
   castles: Buffer,
-  epSquare: number | null
+  epSquare: number | null,
+  wclock: number,
+  bclock: number,
+  last_move_time: number
 }
 
 export type User = {
@@ -85,6 +98,9 @@ export const create_game = (white: UserId, black: UserId, clock: TimeControl): D
     white,
     black,
     clock,
+    wclock: millis_for_clock(clock),
+    bclock: millis_for_clock(clock),
+    last_move_time: Date.now(),
     status: GameStatus.Created,
     cycle_length: d.cycle_length,
     rule50_ply: d.rule50_ply,
@@ -94,7 +110,8 @@ export const create_game = (white: UserId, black: UserId, clock: TimeControl): D
     fullmoves: d.fullmoves,
     turn: d.turn,
     castles: Castles_encode(d.castles),
-    epSquare: d.epSquare ?? null
+    epSquare: d.epSquare ?? null,
+    winner: null
   }
 }
 
@@ -146,6 +163,10 @@ async function create_databases() {
   "created_at" NUMBER,
   "white" TEXT, 
   "black" TEXT, 
+  "clock" NUMBER,
+  "wclock" NUMBER,
+  "bclock" NUMBER,
+  "last_move_time" NUMBER,
   "status" NUMBER,
   "cycle_length" NUMBER,
   "rule50_ply" NUMBER,
@@ -156,6 +177,7 @@ async function create_databases() {
   "turn" TEXT,
   "castles" BLOB,
   "epSquare" NUMBER,
+  "winner" TEXT,
   FOREIGN KEY (white) REFERENCES users(id),
   FOREIGN KEY (black) REFERENCES users(id)
   )`
@@ -190,15 +212,23 @@ export async function update_session(u: { id: SessionId, user_id: UserId }) {
 
 export async function new_game(game: DbGame) {
     await db.prepare(`INSERT INTO games VALUES (
-      @id, @created_at, @white, @black, @status,
+      @id, @created_at, @white, @black, @clock,
+      @wclock, @bclock, @last_move_time, @status,
       @cycle_length, @rule50_ply, @board, @sans,
       @halfmoves, @fullmoves, @turn, @castles,
-      @epSquare)`).run(game)
+      @epSquare, @winner)`).run(game)
 }
 
 export async function game_by_id(game_id: string) {
     let rows = await db.prepare<GameId, DbGame>(`SELECT * from games WHERE id = ?`).get(game_id)
     return rows
+}
+
+export async function make_game_outoftime(u: DbGameOutoftimeUpdate) {
+  db.prepare(`UPDATE games SET
+    status = @status,
+    winner = @winner
+   WHERE games.id = @id`).run(u)
 }
 
 export async function make_game_move(u: DbGameMoveUpdate) {
@@ -211,7 +241,10 @@ export async function make_game_move(u: DbGameMoveUpdate) {
     fullmoves = @fullmoves,
     turn = @turn,
     castles = @castles,
-    epSquare = @epSquare
+    epSquare = @epSquare,
+    wclock = @wclock,
+    bclock = @bclock,
+    last_move_time = @last_move_time
     WHERE games.id = @id`).run(u)
 }
 
