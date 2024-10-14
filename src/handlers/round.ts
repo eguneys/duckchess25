@@ -1,10 +1,19 @@
 import { Dispatch, Message, Peer, peer_send } from "./dispatch";
 import { getGame, getPov } from "../session";
-import { Board, DuckChess, GameResult, makeFen, makeSan, parseFen, parseSan, parseUci, PositionHistory } from "duckops";
-import { DbGame, make_game_move, make_game_outoftime, User } from "../db";
+import { Board, Color, DuckChess, GameResult, makeFen, makeSan, opposite, parseFen, parseSan, parseUci, PositionHistory } from "duckops";
+import { DbGame, make_game_end, make_game_move, User } from "../db";
 import { Board_encode, Castles_encode, GameStatus, millis_for_increment, Pov } from "../types";
 import { revalidate } from "@solidjs/router";
 import { RoomCrowds } from "./nb_connecteds";
+
+const pov_can_resign = (pov: Pov) => {
+    return pov.game.status <= GameStatus.Started
+}
+const pov_can_move = (pov: Pov) => {
+    return pov.game.status <= GameStatus.Started
+}
+
+
 
 async function finisher_out_of_time(pov: Pov) {
     let events = []
@@ -12,15 +21,50 @@ async function finisher_out_of_time(pov: Pov) {
     let status = GameStatus.Outoftime
     let winner = pov.opponent.color
 
+    let [wclock, bclock] = [pov.player.clock, pov.opponent.clock]
+    if (pov.player.color === 'black') {
+        [wclock, bclock] = [bclock, wclock]
+    }
 
-    await make_game_outoftime({
+
+
+    await make_game_end({
         id: pov.game.id,
+        wclock,
+        bclock,
         status,
         winner
     })
 
     events.push({ t: 'flag', d: { status, winner } })
 
+    return events
+}
+
+async function finisher_other(pov: Pov, status: GameStatus, winner?: Color) {
+    let events = []
+
+    let elapsed_time = Date.now() - pov.game.last_move_time
+    pov.player.clock = Math.max(0, pov.player.clock - elapsed_time)
+
+    if (pov.player.clock === 0) {
+        return await finisher_out_of_time(pov)
+    }
+
+    let [wclock, bclock] = [pov.player.clock, pov.opponent.clock]
+    if (pov.player.color === 'black') {
+        [wclock, bclock] = [bclock, wclock]
+    }
+
+    await make_game_end({
+        id: pov.game.id,
+        status,
+        wclock,
+        bclock,
+        winner: winner ?? null
+    })
+
+    events.push({ t: 'endData', d: { status, winner, clock: { wclock, bclock } } })
     return events
 }
 
@@ -51,20 +95,33 @@ async function play_uci(pov: Pov, uci: string) {
     history.append(move)
     let result = history.computeGameResult()
 
-    let status = GameStatus.Started
+    let status = pov.game.status
+    let winner: Color | null = null
+
+
+    if (status > GameStatus.Started) {
+        throw 'Game status is not Started'
+    }
+    if (status === GameStatus.Created) {
+        status = GameStatus.Started
+    }
+
 
     switch (result) {
         case GameResult.WHITE_WON:
+            winner = 'white'
+            status = GameStatus.Ended
+            break
         case GameResult.BLACK_WON:
+            winner = 'black'
             status = GameStatus.Ended
             break
         case GameResult.DRAW:
-            status = GameStatus.Ended
+            status = GameStatus.Draw
             break
         case GameResult.UNDECIDED:
             break
     }
-
 
     let last = history.last()
     let board = Board_encode(last.board)
@@ -97,11 +154,16 @@ async function play_uci(pov: Pov, uci: string) {
         epSquare,
         wclock,
         bclock,
+        winner,
         last_move_time
     })
+    events.push({ t: 'move', d: { step: { uci, san, fen }, clock: { wclock, bclock } } })
 
 
-    events.push({ t: 'move', d: { step: { uci, san, fen }, wclock, bclock } })
+    if (status !== GameStatus.Started) {
+        events.push({ t: 'endData', d: { status, winner, clock: {wclock, bclock } } })
+    }
+
 
     return events
 }
@@ -134,13 +196,6 @@ export class Round extends Dispatch {
         return getPov(this.game_id, this.user.id)
     }
 
-    async get_player_ids() {
-        let pov = await this.getPov()
-        if (pov) {
-            return [pov.player.id, pov.opponent.id]
-        }
-    }
-
     async _message(msg: Message) {
 
         let username = this.user.username
@@ -152,7 +207,17 @@ export class Round extends Dispatch {
             return
         }
 
+        let player_color: Color | undefined = pov.player.username === username ? pov.player.color :
+            pov.opponent.username === username ? pov.opponent.color : undefined
+
         switch (msg.t) {
+            case 'resign': {
+                if (player_color === undefined || !pov_can_resign(pov)) {
+                    throw 'Cant Resign'
+                }
+
+                return this.publish_events(await finisher_other(pov, GameStatus.Resign, opposite(player_color)))
+            } break
             case 'flag': {
                 let elapsed_time = Date.now() - pov.game.last_move_time
                 pov.player.clock = Math.max(0, pov.player.clock - elapsed_time)
@@ -162,10 +227,9 @@ export class Round extends Dispatch {
                 }
             } break
             case 'move': {
-                let pov = await this.getPov()
 
-                if (!pov) {
-                    throw 'No Pov'
+                 if (player_color === undefined || !pov_can_move(pov)) {
+                    throw 'Cant Move'
                 }
 
                 let elapsed_time = Date.now() - pov.game.last_move_time

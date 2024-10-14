@@ -1,6 +1,6 @@
 "use server"
 import { getCookie, setCookie } from "vinxi/http";
-import { session_by_id, game_by_id, create_user, drop_user_by_id, new_user, Profile, profile_by_username, User, user_by_id, DbGame, create_session, new_session, update_session, Session, user_by_username } from "./db";
+import { session_by_id, game_by_id, create_user, drop_user_by_id, new_user, Profile, profile_by_username, User, user_by_id, DbGame, create_session, new_session, update_session, Session, user_by_username, GamePlayerId, game_player_by_id, DbGamePlayer, profile_by_userid } from "./db";
 import { Board_decode, Castles_decode, GameId, millis_for_clock, Player, Pov, SessionId, TimeControl, UserId, UserJsonView } from "./types";
 import { Board, Color, DuckChess, makeFen } from "duckops";
 
@@ -86,6 +86,12 @@ export const getProfile = async (username: string): Promise<Profile | undefined>
   return await profile_by_username(username)
 }
 
+export const getProfileByUserId = async (user_id: UserId): Promise<Profile | undefined> => {
+  return await profile_by_userid(user_id)
+}
+
+
+
 export const getUserJsonViewByUsername = async (username: string): Promise<UserJsonView | undefined> => {
   let u = await user_by_username(username)
   if (!u) {
@@ -123,24 +129,25 @@ export const getGame = async (id: GameId): Promise<DbGame | undefined> => {
   return await game_by_id(id)
 }
 
-export const getPlayer = async (id: UserId, color: Color, clock: number): Promise<Player | undefined> => {
-  let user = await getUserById(id)
+export const getGamePlayer = async (id: GamePlayerId, clock: number): Promise<Player | undefined> => {
+  let p =  await game_player_by_id(id)
 
-  if (!user) {
+  if (!p) {
     return undefined
   }
 
-  let profile = await getProfile(user.username)
+  let u = await getUserById(p.user_id)
 
-  if (!profile) {
+  if (!u) {
     return undefined
   }
 
   return {
-    id: user.id,
-    username: user.username,
-    rating: profile.rating,
-    color,
+    user_id: p.user_id,
+    username: u.username,
+    rating: p.rating,
+    ratingDiff: p.ratingDiff ?? undefined,
+    color: p.color,
     clock
   }
 }
@@ -157,8 +164,8 @@ export const getPov = async (id: GameId, user_id: UserId): Promise<Pov | undefin
   let wclock = g.wclock
   let bclock = g.bclock
 
-  let white = await getPlayer(g.white, 'white', wclock)
-  let black = await getPlayer(g.black, 'black', bclock)
+  let white = await getGamePlayer(g.w_player_id, g.wclock)
+  let black = await getGamePlayer(g.b_player_id, g.bclock)
 
   if (!white || !black) {
     return undefined
@@ -166,7 +173,7 @@ export const getPov = async (id: GameId, user_id: UserId): Promise<Pov | undefin
 
   let [player, opponent] = [white, black]
 
-  if (g.black === user_id) {
+  if (black.user_id === user_id) {
     [player, opponent] = [black, white]
   }
 

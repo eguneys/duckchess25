@@ -30,6 +30,8 @@ const make_game_end_reason = (game: { status: GameStatus, winner?: Color }) => {
       return { reason: 'Game aborted.' }
     case GameStatus.Ended:
       return { reason: 'Game ended.', winner: game.winner }
+    case GameStatus.Resign:
+      return { reason: `${capitalize(opposite(game.winner!))} has resigned.`, winner: game.winner }
     case GameStatus.Outoftime:
       return { reason: `${capitalize(opposite(game.winner!))} is out of time.`, winner: game.winner }
   }
@@ -143,11 +145,16 @@ function PovView(props: { pov: Pov }) {
     flag(flag: { status: GameStatus, winner: Color }) {
       set_game_end_reason(make_game_end_reason(flag))
     },
-    move(move: {step: { uci: string, san: string, fen: string }, wclock: number, bclock: number } ) {
+    move(move: {step: { uci: string, san: string, fen: string }, clock: { wclock: number, bclock: number } } ) {
       steps.add_step(move.step)
       steps.selected_ply = steps.steps.length
-      set_w_clock(move.wclock)
-      set_b_clock(move.bclock)
+      set_w_clock(move.clock.wclock)
+      set_b_clock(move.clock.bclock)
+    },
+    endData(data: { status: GameStatus, winner?: Color, clock: { wclock: number, bclock: number }}) {
+      set_game_end_reason(make_game_end_reason(data))
+      set_w_clock(data.clock.wclock)
+      set_b_clock(data.clock.bclock)
     }
   }
 
@@ -177,9 +184,9 @@ function PovView(props: { pov: Pov }) {
   const steps = Steps.make(pov().game.sans)
   const fen = createMemo(() => steps.selected_fen)
 
-  const clock_running_color = createMemo(() => pov().game.status === GameStatus.Started ? fen_color(steps.last_fen) : undefined)
 
   const [game_end_reason, set_game_end_reason] = createSignal(make_game_end_reason(pov().game))
+  const clock_running_color = createMemo(() => !game_end_reason() ? fen_color(steps.last_fen) : undefined)
 
   const go_to_ply = (ply: number) => {
     steps.selected_ply = ply
@@ -255,6 +262,11 @@ function PovView(props: { pov: Pov }) {
 
   let [can_takeback, set_can_takeback] = createSignal(false)
 
+  let can_resign = createMemo(() => !game_end_reason())
+  const set_do_resign = () => {
+    send({ t: 'resign' })
+  }
+
   return (<>
     <main class='round'>
       <Title>Play </Title>
@@ -262,6 +274,8 @@ function PovView(props: { pov: Pov }) {
         <DuckBoard can_takeback={set_can_takeback} view_only={view_only()} orientation={orientation()} on_user_move={on_user_move} do_uci={do_uci()} do_takeback={do_takeback()} fen={fen()} />
       </div>
       <SideView 
+        can_resign={can_resign()}
+        do_resign={set_do_resign}
         game_end_reason={game_end_reason()}
         clock_running_color={clock_running_color()}
       do_takeback={set_do_takeback}
@@ -278,6 +292,8 @@ function PovView(props: { pov: Pov }) {
 
 function SideView(props: { do_takeback: () => void, 
   game_end_reason?: GameEndReason,
+  can_resign: boolean,
+  do_resign: () => void,
   can_takeback: boolean, 
   player: Player, 
   opponent: Player, 
@@ -298,8 +314,8 @@ function SideView(props: { do_takeback: () => void,
   let { crowd, cleanup } = useContext(SocketContext)!
 
 
-  const is_player_online = createMemo(() => crowd().includes(player().id))
-  const is_opponent_online = createMemo(() => crowd().includes(opponent().id))
+  const is_player_online = createMemo(() => crowd().includes(player().user_id))
+  const is_opponent_online = createMemo(() => crowd().includes(opponent().user_id))
 
   const is_player_clock_running = createMemo(() => player().color === props.clock_running_color)
   const is_opponent_clock_running = createMemo(() => opponent().color === props.clock_running_color)
@@ -318,7 +334,7 @@ function SideView(props: { do_takeback: () => void,
     <div class='rcontrols'>
       <div class='ricons'>
         <button onClick={() => props.do_takeback()} disabled={!props.can_takeback} class='fbt takeback-yes'><span data-icon=""></span></button>
-        <button onClick={() => { }} disabled={true} class='fbt resign'><span data-icon=""></span></button>
+        <button onClick={() => props.do_resign()} disabled={!props.can_resign} class='fbt resign'><span data-icon=""></span></button>
       </div>
     </div>
     <div class={'user-bot user-link ' + (is_opponent_online() ? 'online' : 'offline')}>
@@ -405,6 +421,13 @@ function Moves(props: { game_end_reason?: GameEndReason, steps: Step[], set_sele
   })
 
   let el_move: HTMLElement
+
+  createEffect(() => {
+    if (props.game_end_reason) {
+      el_move.scrollTop = 9999;
+    }
+  })
+
   createEffect(() => {
     const ply = selected_ply()
     let cont = el_move

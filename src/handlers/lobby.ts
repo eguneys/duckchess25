@@ -1,6 +1,6 @@
 import { Peer, Dispatch, peer_send, Message } from "./dispatch";
-import { create_game, gen_id, new_game, User, user_by_username } from "../db";
-import { getProfile } from "../session";
+import { create_and_new_game, gen_id, new_game, User, user_by_username } from "../db";
+import { getProfile, getProfileByUserId } from "../session";
 import { time_controls, TimeControl } from "../types";
 
 
@@ -78,17 +78,23 @@ export class Lobby extends Dispatch {
                         let hu = await user_by_username(h.u)
 
                         if (!hu) {
-                            return
+                            throw "No user for hook match"
                         }
-                        let white = this.user.id
-                        let black = hu.id
+                        let white = await getProfileByUserId(this.user.id)
+                        let black = await getProfileByUserId(hu.id)
+
+                        if (!white || !black) {
+                            throw "No Profile for hook match"
+                        }
+
                         if (Math.random() < 0.5) {
                             [white, black] = [black, white]
                         }
-                        let game = create_game(white, black, h.clock)
-                        await new_game(game)
 
-                        this.publish_users({ t: 'game_redirect', d: game.id }, [white, black])
+
+                        let game = await create_and_new_game(white.user_id, black.user_id, white.rating, black.rating, h.clock)
+
+                        this.publish_users({ t: 'game_redirect', d: game.id }, [white.user_id, black.user_id])
 
                     }
                 }

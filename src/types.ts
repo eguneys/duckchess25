@@ -25,14 +25,17 @@ export enum GameStatus {
   Created = 0,
   Started,
   Ended,
+  Draw,
+  Resign,
   Outoftime,
   Aborted,
 }
 
 export type Player = {
-    id: UserId,
+    user_id: UserId,
     username: string,
     rating: number,
+    ratingDiff?: number,
     color: Color,
     clock: number
 }
