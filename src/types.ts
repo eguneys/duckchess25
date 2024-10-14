@@ -1,18 +1,28 @@
-import { Board, Castles, Color, DuckChess, SquareSet } from 'duckops'
+import { Board, Castles, Color, DuckChess, parseFen, SquareSet } from 'duckops'
+import { GamePlayerId, UserPerfs } from './db'
+
+
+
+export const fen_color = (fen: string) => parseFen(fen).unwrap().turn
 
 export type SessionId = string
 export type UserId = string
 export type GameId = string
 export type ProfileId = string
 
-
+export type Count = {
+  draw: number,
+  game: number,
+  loss: number,
+  win: number
+}
 
 export type UserJsonView = {
     id: UserId,
     username: string,
-    rating: number,
     is_online: boolean,
-    nb_games: number
+    count: Count,
+    perfs: UserPerfs
 }
 
 
@@ -32,12 +42,12 @@ export enum GameStatus {
 }
 
 export type Player = {
-    user_id: UserId,
-    username: string,
-    rating: number,
-    ratingDiff?: number,
-    color: Color,
-    clock: number
+  user_id: UserId,
+  username: string,
+  rating: number,
+  ratingDiff?: number,
+  color: Color,
+  clock: number
 }
 
 export type Game = {
@@ -238,5 +248,3 @@ export const Board_encode = (b: Board): Buffer => {
     res.writeInt16LE(b.duck?? -1, offset)
     return res
 }
-
-

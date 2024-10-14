@@ -1,6 +1,6 @@
 "use server"
 import { getCookie, setCookie } from "vinxi/http";
-import { session_by_id, game_by_id, create_user, drop_user_by_id, new_user, Profile, profile_by_username, User, user_by_id, DbGame, create_session, new_session, update_session, Session, user_by_username, GamePlayerId, game_player_by_id, DbGamePlayer, profile_by_userid } from "./db";
+import { session_by_id, game_by_id, drop_user_by_id, new_user, User, user_by_id, DbGame, create_session, new_session, update_session, Session, user_by_username, GamePlayerId, game_player_by_id, DbGamePlayer, UserPerfs, get_perfs_by_user_id, get_count_by_user_id } from "./db";
 import { Board_decode, Castles_decode, GameId, millis_for_clock, Player, Pov, SessionId, TimeControl, UserId, UserJsonView } from "./types";
 import { Board, Color, DuckChess, makeFen } from "duckops";
 
@@ -46,9 +46,8 @@ export const resetUser = async(): Promise<User> => {
   } 
 
 
-  let user = await create_user()
+  let user = await new_user()
 
-  await new_user(user)
   await update_session({ id: session.id, user_id: user.id })
   return user
 }
@@ -71,9 +70,8 @@ export const getUserWithSession = async (session: Session): Promise<User> => {
     return user
   }
 
-  user = await create_user()
+  user = await new_user()
 
-  await new_user(user)
   await update_session({ id: session.id, user_id: user.id })
   return user
 }
@@ -81,16 +79,6 @@ export const getUserWithSession = async (session: Session): Promise<User> => {
 export const getUserById = async (id: UserId): Promise<User | undefined> => {
   return await user_by_id(id)
 }
-
-export const getProfile = async (username: string): Promise<Profile | undefined> => {
-  return await profile_by_username(username)
-}
-
-export const getProfileByUserId = async (user_id: UserId): Promise<Profile | undefined> => {
-  return await profile_by_userid(user_id)
-}
-
-
 
 export const getUserJsonViewByUsername = async (username: string): Promise<UserJsonView | undefined> => {
   let u = await user_by_username(username)
@@ -109,17 +97,23 @@ export const getUserJsonView = async (id: UserId): Promise<UserJsonView | undefi
 }
 
 const getUserJsonViewByUser = async (u: User): Promise<UserJsonView | undefined> => {
-  let p = await getProfile(u.username)
 
-  if (!p) {
+  let perfs = await get_perfs_by_user_id(u.id)
+  let count = await get_count_by_user_id(u.id)
+
+  if (!perfs) {
+    return undefined
+  }
+
+  if (!count) {
     return undefined
   }
 
   return {
     id: u.id,
     username: u.username,
-    rating: p.rating,
-    nb_games: p.nb_games,
+    perfs,
+    count,
     is_online: false
   }
 

@@ -4,7 +4,7 @@ import { HttpStatusCode } from "@solidjs/start";
 import { createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show, Signal, Suspense, useContext } from "solid-js";
 import { DbGame, User } from "~/db";
 import { getPov, getUser } from "~/components/cached";
-import { GameStatus, Player, Pov, UserId } from '~/types'
+import { fen_color, GameStatus, Player, Pov, UserId } from '~/types'
 
 import '~/app.scss'
 import './Round.scss'
@@ -37,7 +37,6 @@ const make_game_end_reason = (game: { status: GameStatus, winner?: Color }) => {
   }
 }
 
-const fen_color = (fen: string) => parseFen(fen).unwrap().turn
 
 type Step = {
   uci: string,

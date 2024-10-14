@@ -1,25 +1,86 @@
 import { Dispatch, Message, Peer, peer_send } from "./dispatch";
 import { getGame, getPov } from "../session";
 import { Board, Color, DuckChess, GameResult, makeFen, makeSan, opposite, parseFen, parseSan, parseUci, PositionHistory } from "duckops";
-import { DbGame, make_game_end, make_game_move, User } from "../db";
-import { Board_encode, Castles_encode, GameStatus, millis_for_increment, Pov } from "../types";
+import { DbGame, get_perfs_by_user_id, make_game_end, make_game_move, make_game_rating_diffs, User, UserPerfs } from "../db";
+import { Board_encode, Castles_encode, fen_color, Game, GameId, GameStatus, millis_for_increment, Player, Pov, UserId } from "../types";
 import { revalidate } from "@solidjs/router";
 import { RoomCrowds } from "./nb_connecteds";
+import { Glicko_Rating, RatingDiffs } from "~/glicko";
+
+
+const game_finished = (game: Game) => {
+    return game.status <= GameStatus.Started
+}
+
+
 
 const pov_can_resign = (pov: Pov) => {
-    return pov.game.status <= GameStatus.Started
+    return !game_finished(pov.game)
 }
 const pov_can_move = (pov: Pov) => {
-    return pov.game.status <= GameStatus.Started
+    return !game_finished(pov.game)
 }
 
+
+async function update_perfs(game: Game, w_player: Player, b_player: Player) {
+   if (!game_finished(game) || game.sans.length <= 2) {
+    return
+   }
+
+   let w_rating = await user_api_with_perfs(w_player.user_id)
+   let b_rating = await user_api_with_perfs(b_player.user_id)
+
+   if (!w_rating || !b_rating) {
+       throw "No rating for user"
+   }
+
+   let [ratingsW, ratingsB] = updateRating(w_rating, b_rating, game)
+
+
+   let ratingDiffs: RatingDiffs = [ratingOf(ratingsW) - ratingOf(w_rating), ratingOf(ratingsB) - ratingOf(b_rating)]
+
+
+   await game_repo_set_rating_diffs(game.id, ratingDiffs)
+   await user_api_update_perfs(w_player, ratingsW, b_player, ratingsB)
+}
+
+const ratingOf = (rating: Glicko_Rating) => {
+    return Math.floor(rating.rating)
+}
+
+const game_repo_set_rating_diffs = async (id: GameId, diffs: RatingDiffs) => {
+    await make_game_rating_diffs(id, diffs)
+}
+
+const user_api_with_perfs = async (user_id: UserId): Promise<UserPerfs | undefined> => {
+    return await get_perfs_by_user_id(user_id)
+}
+
+const user_api_update_perfs = async (white: Player, w_rating: Glicko_Rating, black: Player, b_rating: Glicko_Rating) => {
+    await make_profile_rating_update(white.user_id, w_rating)
+    await make_profile_rating_update(black.user_id, b_rating)
+}
+
+const updateRating = (white: Glicko_Rating, black: Glicko_Rating, game: Game) => {
+
+    switch (game.winner) {
+        case undefined: return glicko2_GameResult(white, black, true)
+        case "white": return glicko2_GameResult(white, black, false)
+        case "black": return glicko2_GameResult(black, white, false)
+    }
+}
+
+
+const glicko2_GameResult = (winner: Glicko_Rating, loser: Glicko_Rating, isDraw: boolean) => {
+    return [winner, loser]
+}
 
 
 async function finisher_out_of_time(pov: Pov) {
     let events = []
 
     let status = GameStatus.Outoftime
-    let winner = pov.opponent.color
+    let winner = opposite(fen_color(pov.game.fen))
 
     let [wclock, bclock] = [pov.player.clock, pov.opponent.clock]
     if (pov.player.color === 'black') {
@@ -36,7 +97,21 @@ async function finisher_out_of_time(pov: Pov) {
         winner
     })
 
+    let game = pov.game
+
+    game.status = status
+    game.winner = winner
+
+
     events.push({ t: 'flag', d: { status, winner } })
+
+    let [white, black] = [pov.player, pov.opponent]
+
+    if (pov.player.color === 'black') {
+        [white, black] = [black, white]
+    }
+
+    events.push(await update_perfs(game, white, black))
 
     return events
 }
@@ -51,10 +126,14 @@ async function finisher_other(pov: Pov, status: GameStatus, winner?: Color) {
         return await finisher_out_of_time(pov)
     }
 
-    let [wclock, bclock] = [pov.player.clock, pov.opponent.clock]
+    let [w_player, b_player] = [pov.player, pov.opponent]
+
     if (pov.player.color === 'black') {
-        [wclock, bclock] = [bclock, wclock]
+        [w_player, b_player] = [b_player, w_player]
     }
+
+
+    let [wclock, bclock] = [w_player.clock, b_player.clock]
 
     await make_game_end({
         id: pov.game.id,
@@ -64,7 +143,15 @@ async function finisher_other(pov: Pov, status: GameStatus, winner?: Color) {
         winner: winner ?? null
     })
 
+    let game = pov.game
+
+    game.status = status
+    game.winner = winner
+
     events.push({ t: 'endData', d: { status, winner, clock: { wclock, bclock } } })
+
+    events.push(await update_perfs(game, w_player, b_player))
+
     return events
 }
 
@@ -216,7 +303,7 @@ export class Round extends Dispatch {
                     throw 'Cant Resign'
                 }
 
-                return this.publish_events(await finisher_other(pov, GameStatus.Resign, opposite(player_color)))
+                 this.publish_events(await finisher_other(pov, GameStatus.Resign, opposite(player_color)))
             } break
             case 'flag': {
                 let elapsed_time = Date.now() - pov.game.last_move_time

@@ -1,5 +1,4 @@
 import { action, cache, createAsync, redirect, useAction, useBeforeLeave, useParams } from "@solidjs/router"
-import { Profile, profile_by_username } from "../../db"
 import { Title } from "@solidjs/meta"
 import { createEffect, createSignal, on, onCleanup, onMount, Show, Suspense, untrack, useContext } from "solid-js"
 
@@ -24,7 +23,7 @@ export default function Home() {
         if (u) {
             send({ t: 'is_online', d: u.id })
         }
-    }, { defer: true }))
+    }))
 
     let action_reset_profile = useAction(action(async() => {
         "use server"
@@ -54,22 +53,21 @@ export default function Home() {
                 <Suspense>
                     <Show when={user_json()} fallback={
                         <button onClick={() => { action_reset_profile() }}>Reset Profile</button>
-                    }>{profile =>
+                    }>{user =>
                             <>
                                 <div class='head'>
                                     <h1>
                                         <span class={'user-link ' + (is_online() ? 'online' : 'offline')}>
                                             <i class='line'></i>
-                                            {params.username}</span>
-                                        <span class='rating'>{profile().rating}</span>
+                                            {user().username}</span>
                                     </h1>
                                     <div class='tools'>
-                                        <Show when={user()?.username === params.username}>
+                                        <Show when={user().username === params.username}>
                                             <button onClick={() => action_reset_profile()}>Reset Profile</button>
                                         </Show>
                                     </div>
                                 </div>
-                                <p class='activity'>{profile().nb_games} games played.</p>
+                                <p class='activity'>{user().count.game} games played. </p>
                             </>
                         }</Show>
                 </Suspense>
