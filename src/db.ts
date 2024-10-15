@@ -305,7 +305,7 @@ async function create_databases() {
   console.log('tables created')
 }
 
-await create_databases()
+create_databases()
 
 
 export async function new_session(session: Session) {

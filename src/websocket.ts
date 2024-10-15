@@ -8,7 +8,6 @@ export default eventHandler({
     handler: (e) => {},
     websocket: defineWebSocket({
         async open(peer) {
-            console.log(peer.addr)
             socket_opened()
             peer_send(peer, 0)
             peer.publish(key_for_room_channel('lobby'), nb_connected_msg())

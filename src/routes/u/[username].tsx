@@ -7,6 +7,7 @@ import './User.scss'
 import { SocketContext, SocketProvider } from "~/components/socket"
 import { getUser, getUserJsonView, resetUser } from "~/components/cached"
 import { display_Glicko } from "~/glicko";
+import { UserJsonView } from "~/types";
 
 export default function Home() {
     const params = useParams()
@@ -20,11 +21,14 @@ export default function Home() {
     let user = createAsync(() => getUser())
     createEffect(on(() => params.username, () => {
         reconnect()
+    }, { defer: true }))
+
+    createEffect(() => {
         let u = user_json()
         if (u) {
             send({ t: 'is_online', d: u.id })
         }
-    }))
+    })
 
     let action_reset_profile = useAction(action(async() => {
         "use server"
