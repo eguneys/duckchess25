@@ -1,8 +1,8 @@
 "use server"
 import { getCookie, setCookie } from "vinxi/http";
-import { session_by_id, game_by_id, drop_user_by_id, new_user, User, user_by_id, DbGame, create_session, new_session, update_session, Session, user_by_username, GamePlayerId, game_player_by_id, DbGamePlayer, UserPerfs, get_perfs_by_user_id, get_count_by_user_id } from "./db";
-import { Board_decode, Castles_decode, GameId, millis_for_clock, Player, Pov, SessionId, TimeControl, UserId, UserJsonView } from "./types";
-import { Board, Color, DuckChess, makeFen } from "duckops";
+import { session_by_id, game_by_id, drop_user_by_id, new_user, User, user_by_id, DbGame, create_session, new_session, update_session, Session, user_by_username, GamePlayerId, game_player_by_id, DbGamePlayer, UserPerfs, get_perfs_by_user_id, get_count_by_user_id, get_perfs_by_username } from "./db";
+import { Board_decode, Castles_decode, Game, GameId, GameWithFen, LightPerf, millis_for_clock, PerfKey, Player, Pov, PovWithFen, SessionId, TimeControl, UserId, UserJsonView } from "./types";
+import { Board, ByColor, Color, DuckChess, makeFen, opposite } from "duckops";
 
 export type UserSession = {
   user_id: string
@@ -119,11 +119,65 @@ const getUserJsonViewByUser = async (u: User): Promise<UserJsonView | undefined>
 
 }
 
-export const getGame = async (id: GameId): Promise<DbGame | undefined> => {
-  return await game_by_id(id)
+export const getGameWithFen = async (id: GameId): Promise<GameWithFen | undefined> => {
+
+  let res = await getGame(id)
+
+  if (!res) {
+    return undefined
+  }
+
+  return {
+    ...res,
+    duckchess: makeFen(res.duckchess.toSetup())!
+  }
 }
 
-export const getGamePlayer = async (id: GamePlayerId, clock: number): Promise<Player | undefined> => {
+export const getGame = async (id: GameId): Promise<Game | undefined> => {
+  let g = await game_by_id(id)
+
+  if (!g) {
+    return undefined
+  }
+
+  let { status, wclock, bclock, moved_at, created_at, sans, clock } = g
+
+  let { w_player_id, b_player_id } = g
+
+  let white = await getGamePlayer(w_player_id)
+  let black = await getGamePlayer(b_player_id, )
+
+  if (!white || !black) {
+    return undefined
+  }
+
+  let players: ByColor<Player> = { white, black }
+
+  let duckchess = DuckChess.make(
+    Board_decode(g.board),
+    g.rule50_ply,
+    g.cycle_length,
+    g.halfmoves,
+    g.fullmoves,
+    g.turn,
+    Castles_decode(g.castles),
+    g.epSquare ?? undefined)
+
+  return {
+    id,
+    duckchess,
+    wclock,
+    bclock,
+    clock,
+    created_at,
+    moved_at: moved_at ?? undefined,
+    sans: sans === '' ? [] : sans.split(' '),
+    players,
+    status
+  }
+}
+
+export const getGamePlayer = async (id: GamePlayerId): Promise<Player | undefined> => {
   let p =  await game_player_by_id(id)
 
   if (!p) {
@@ -137,65 +191,98 @@ export const getGamePlayer = async (id: GamePlayerId, clock: number): Promise<Pl
   }
 
   return {
+    id: p.id,
     user_id: p.user_id,
     username: u.username,
     rating: p.rating,
     ratingDiff: p.ratingDiff ?? undefined,
-    color: p.color,
-    clock
+    color: p.color
+  }
+}
+
+export const getLightPerf = async (user_id: UserId, key: PerfKey): Promise<LightPerf | undefined> => {
+  let perfs = await get_perfs_by_user_id(user_id)
+
+  let perf = perfs?.perfs[key]
+
+  if (!perf) {
+    return undefined
+  }
+
+  let rating = perf.gl.rating
+  let nb = perf.nb
+  let progress = 0
+
+  return {
+    user_id,
+    rating,
+    nb,
+    progress
   }
 }
 
 
-export const getPov = async (id: GameId, user_id: UserId): Promise<Pov | undefined> => {
-  let g = await getGame(id)
+export const getLightPerfByUsername = async (username: string, key: PerfKey): Promise<LightPerf | undefined> => {
+  let u = await user_by_username(username)
 
-  if (!g) {
+  if (!u) {
     return undefined
   }
 
-  let clock = g.clock
-  let wclock = g.wclock
-  let bclock = g.bclock
+  return getLightPerf(u.id, key)
+}
 
-  let white = await getGamePlayer(g.w_player_id, g.wclock)
-  let black = await getGamePlayer(g.b_player_id, g.bclock)
+export const game_pov_with_userid = async (game: Game, user_id: UserId): Promise<Pov | undefined> => {
+    if (game.players.white.user_id === user_id) {
+        return {
+            color: 'white',
+            game,
+            player: game.players.white,
+            opponent: game.players.black
+        }
+    } else if (game.players.black.user_id === user_id) {
+        return {
+            color: 'black',
+            game,
+            player: game.players.black,
+            opponent: game.players.white
+        }
+    }
+}
 
-  if (!white || !black) {
-    return undefined
-  }
-
-  let [player, opponent] = [white, black]
-
-  if (black.user_id === user_id) {
-    [player, opponent] = [black, white]
-  }
-
-  let duckchess = DuckChess.make(
-    Board_decode(g.board),
-    g.rule50_ply,
-    g.cycle_length,
-    g.halfmoves,
-    g.fullmoves,
-    g.turn,
-    Castles_decode(g.castles),
-    g.epSquare ?? undefined)
-
-  let fen = makeFen(duckchess.toSetup())
-
-  let game = {
-    id,
-    fen,
-    sans: g.sans === '' ?  [] : g.sans.split(' '),
-    status: g.status,
-    winner: g.winner ?? undefined,
-    last_move_time: g.last_move_time
-  }
-
+export const game_pov_for_watcher = async (game: Game, color: Color): Promise<Pov> => {
   return {
-    player,
-    opponent,
-    clock,
-    game
+    color,
+    game,
+    player: game.players[color],
+    opponent: game.players[opposite(color)]
+  }
+}
+
+
+export const game_wfen_pov_with_userid = async (game: GameWithFen, user_id: UserId): Promise<PovWithFen | undefined> => {
+    if (game.players.white.user_id === user_id) {
+        return {
+            color: 'white',
+            game,
+            player: game.players.white,
+            opponent: game.players.black
+        }
+    } else if (game.players.black.user_id === user_id) {
+        return {
+            color: 'black',
+            game,
+            player: game.players.black,
+            opponent: game.players.white
+        }
+    }
+}
+
+export const game_wfen_pov_for_watcher = async (game: GameWithFen, color: Color): Promise<PovWithFen> => {
+  return {
+    color,
+    game,
+    player: game.players[color],
+    opponent: game.players[opposite(color)]
   }
 }

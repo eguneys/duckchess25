@@ -1,7 +1,7 @@
 import { Peer, Dispatch, peer_send, Message } from "./dispatch";
 import { create_and_new_game, gen_id, new_game, User, user_by_username } from "../db";
-import { getProfile, getProfileByUserId } from "../session";
-import { time_controls, TimeControl } from "../types";
+import { perf_key_of_clock, time_controls, TimeControl } from "../types";
+import { getLightPerf, getLightPerfByUsername } from "../session";
 
 
 export type Hook = {
@@ -43,21 +43,21 @@ export class Lobby extends Dispatch {
         switch (msg.t) {
             case 'hadd': {
                 if (time_controls.includes(msg.d)) {
+                    let clock = msg.d
 
-                    let i = hooks.findIndex(_ => _.u === username && _.clock === msg.d)
+                    let i = hooks.findIndex(_ => _.u === username && _.clock === clock)
                     if (i !== -1) {
                         let h = hooks.splice(i, 1)[0]
                         this.publish_room({ t: 'hrem', d: [h.id]})
                         return
                     }
 
-                    let p = await getProfile(this.user.username)
-                    if (!p) {
-                        this.terminate()
-                        return
+                    let perf = await getLightPerfByUsername(this.user.username, perf_key_of_clock(clock))
+                    if (!perf) {
+                        throw "No Light Perf for user " + this.user.username
                     }
 
-                    let hook = create_hook(username, p.rating, msg.d)
+                    let hook = create_hook(username, perf.rating, msg.d)
                     hooks.push(hook)
                     this.publish_room({ t: 'hadd', d: hook})
                 }
@@ -80,11 +80,12 @@ export class Lobby extends Dispatch {
                         if (!hu) {
                             throw "No user for hook match"
                         }
-                        let white = await getProfileByUserId(this.user.id)
-                        let black = await getProfileByUserId(hu.id)
+                        let perf_key = perf_key_of_clock(h.clock)
+                        let white = await getLightPerf(this.user.id, perf_key)
+                        let black = await getLightPerf(hu.id, perf_key)
 
                         if (!white || !black) {
-                            throw "No Profile for hook match"
+                            throw "No Light Perf for hook match"
                         }
 
                         if (Math.random() < 0.5) {

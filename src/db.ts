@@ -1,10 +1,11 @@
 "use server"
 import { generate_username } from "./gen"
-import { Board_encode, Castles_encode, GameId, GameStatus, millis_for_clock, SessionId, TimeControl, UserId } from './types'
+import { Board_encode, Castles_encode, GameId, GameStatus, millis_for_clock, PerfKey, PerfKeys, SessionId, TimeControl, UserId } from './types'
 import { Board, Color, DuckChess } from 'duckops'
 
 import Database from 'better-sqlite3'
 import { default_Glicko_Rating, Glicko_Rating } from "./glicko"
+import { getUser } from "./session"
 
 
 const db = new Database('.data/foobar.db')
@@ -15,6 +16,7 @@ export type GamePlayerId = string
 type DbUserPerfsId = string
 type DbPerfsId = string
 type DbGlickoId = string
+
 
 type DbUserPerfs = {
   id: DbUserPerfsId,
@@ -37,15 +39,13 @@ type DbGlicko = {
 }
 
 export type Perfs = {
+  id: DbPerfsId,
+  gl_id: DbGlickoId,
   gl: Glicko_Rating,
   nb: number
 }
 
-export type UserPerfs = {
-  "blitz": Perfs,
-  "rapid": Perfs,
-  "classical": Perfs
-}
+export type UserPerfs = { id: DbUserPerfsId, perfs: Record<PerfKey, Perfs> }
 
 type DbCountId = string
 export type DbCount = {
@@ -72,7 +72,7 @@ export type DbGame = {
   clock: TimeControl,
   wclock: number,
   bclock: number,
-  last_move_time: number,
+  moved_at: number | null,
   status: GameStatus,
   cycle_length: number,
   rule50_ply: number,
@@ -108,7 +108,6 @@ type DbGameMoveUpdate = {
   epSquare: number | null,
   wclock: number,
   bclock: number,
-  last_move_time: number,
   winner: Color | null
 }
 
@@ -169,7 +168,7 @@ const create_game = (white: UserId, black: UserId, white_rating: number, black_r
     clock,
     wclock: millis_for_clock(clock),
     bclock: millis_for_clock(clock),
-    last_move_time: Date.now(),
+    moved_at: null,
     status: GameStatus.Created,
     cycle_length: d.cycle_length,
     rule50_ply: d.rule50_ply,
@@ -278,7 +277,7 @@ async function create_databases() {
   "clock" NUMBER,
   "wclock" NUMBER,
   "bclock" NUMBER,
-  "last_move_time" NUMBER,
+  "moved_at" NUMBER,
   "status" NUMBER,
   "cycle_length" NUMBER,
   "rule50_ply" NUMBER,
@@ -333,7 +332,7 @@ export async function new_game(gamep: [DbGamePlayer, DbGamePlayer, DbGame]) {
 
     await db.prepare(`INSERT INTO games VALUES (
       @id, @created_at, @w_player_id, @b_player_id, @clock,
-      @wclock, @bclock, @last_move_time, @status,
+      @wclock, @bclock, @moved_at, @status,
       @cycle_length, @rule50_ply, @board, @sans,
       @halfmoves, @fullmoves, @turn, @castles,
       @epSquare, @winner)`).run(game)
@@ -372,9 +371,9 @@ export async function make_game_move(u: DbGameMoveUpdate) {
     epSquare = @epSquare,
     wclock = @wclock,
     bclock = @bclock,
-    last_move_time = @last_move_time,
+    moved_at = @moved_at,
     winner = @winner
-    WHERE games.id = @id`).run(u)
+    WHERE games.id = @id`).run({...u, moved_at: Date.now() })
 }
 
 
@@ -418,12 +417,61 @@ export async function dropped_users_in_last_minute() {
 
 
 export async function make_game_rating_diffs(id: GameId, diffs: [number, number]) {
+  throw 'make game rating diffs'
+}
 
+export async function get_perfs_of_user_by_key(user_id: UserId, key: PerfKey) {
+
+  let db_perfs = await db.prepare<[UserId, PerfKey], DbPerfs>(`
+    SELECT ? FROM user_perfs 
+    INNER JOIN users ON users.perfs = user_perfs.id
+    WHERE users.id = ?
+    `).get(key, user_id)
+
+  if (!db_perfs) {
+    return undefined
+  }
+
+  let nb = db_perfs.nb
+  let gl = await get_gl_by_id(db_perfs.gl)
+
+  if (!gl) {
+    return undefined
+  }
+
+  return {
+    gl,
+    nb
+  }
+}
+
+export async function update_user_perfs(prev: UserPerfs, cur: UserPerfs) {
+  await Promise.all(PerfKeys.map(key => {
+    if (prev.perfs[key].nb !== cur.perfs[key].nb) {
+      return update_perfs(cur.perfs[key])
+    }
+  }))
+}
+
+async function update_perfs(perfs: Perfs) {
+  let [db_gl, db_perfs] = create_empty_perfs()
+
+  db_gl.r = perfs.gl.rating
+  db_gl.d = perfs.gl.deviation
+  db_gl.v = perfs.gl.volatility
+
+  db_perfs.id = perfs.id
+  db_perfs.nb = perfs.nb
+
+  await db.prepare(`INSERT INTO glickos VALUES (@id, @r, @d, @v)`).run(db_gl)
+  await db.prepare(`UPDATE perfs SET gl = @gl, nb = @nb WHERE perfs.id = @id`).run(db_perfs)
+  await db.prepare(`DELETE FROM glickos WHERE glickos.id = ?`).run(perfs.gl_id)
 }
 
 async function get_gl_by_id(id: DbGlickoId): Promise<Glicko_Rating | undefined> {
 
   let db_glicko = await db.prepare<DbGlickoId, DbGlicko>(`SELECT * FROM glickos WHERE glickos.id = ?`).get(id)
+
 
   if (!db_glicko) {
     return undefined
@@ -454,9 +502,21 @@ async function get_perf_by_id(id: DbPerfsId): Promise<Perfs | undefined> {
   }
 
   return {
+    id: db_perfs.id,
+    gl_id: db_perfs.gl,
     gl,
     nb
   }
+}
+
+export async function get_perfs_by_username(username: string): Promise<UserPerfs | undefined> {
+  let user = await user_by_username(username)
+
+  if (!user) {
+    return undefined
+  }
+
+  return await get_perfs_by_user_id(user.id)
 }
 
 export async function get_perfs_by_user_id(user_id: UserId): Promise<UserPerfs | undefined> {
@@ -477,9 +537,12 @@ export async function get_perfs_by_user_id(user_id: UserId): Promise<UserPerfs |
   }
 
   return {
-    blitz,
-    rapid,
-    classical
+    id: user_perfs.id,
+    perfs: {
+      blitz,
+      rapid,
+      classical
+    }
   }
 
   

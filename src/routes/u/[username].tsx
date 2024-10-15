@@ -69,9 +69,9 @@ export default function Home() {
                                     </div>
                                 </div>
                                 <div class='perfs'>
-                                    <div class='blitz'><i class='icon' data-icon=""></i> Blitz <span class='rating'>{display_Glicko(user().perfs.blitz.gl)}</span> <span class='nb-games'>{user().perfs.blitz.nb}</span></div>
-                                    <div class='rapid'><i class='icon' data-icon=""></i> Rapid <span class='rating'>{display_Glicko(user().perfs.rapid.gl)}</span> <span class='nb-games'>{user().perfs.rapid.nb}</span></div>
-                                    <div class='classical'><i class='icon' data-icon=""></i> Classical <span class='rating'>{display_Glicko(user().perfs.classical.gl)}</span> <span class='nb-games'>{user().perfs.classical.nb}</span></div>
+                                    <div class='blitz'><i class='icon' data-icon=""></i> Blitz <span class='rating'>{display_Glicko(user().perfs.perfs.blitz.gl)}</span> <span class='nb-games'>{user().perfs.perfs.blitz.nb}</span></div>
+                                    <div class='rapid'><i class='icon' data-icon=""></i> Rapid <span class='rating'>{display_Glicko(user().perfs.perfs.rapid.gl)}</span> <span class='nb-games'>{user().perfs.perfs.rapid.nb}</span></div>
+                                    <div class='classical'><i class='icon' data-icon=""></i> Classical <span class='rating'>{display_Glicko(user().perfs.perfs.classical.gl)}</span> <span class='nb-games'>{user().perfs.perfs.classical.nb}</span></div>
                                 </div>
                                 <div class='activity'>
                                     <div class='nbs'>

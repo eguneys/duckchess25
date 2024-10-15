@@ -1,10 +1,10 @@
 import { Title } from "@solidjs/meta";
-import { A, createAsync, useParams } from "@solidjs/router";
+import { A, createAsync, useParams, useSearchParams } from "@solidjs/router";
 import { HttpStatusCode } from "@solidjs/start";
 import { createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show, Signal, Suspense, useContext } from "solid-js";
 import { DbGame, User } from "~/db";
-import { getPov, getUser } from "~/components/cached";
-import { fen_color, GameStatus, Player, Pov, UserId } from '~/types'
+import { getUser } from "~/components/cached";
+import { fen_color, Game, GameStatus, GameWithFen, Player, Pov, PovWithFen, UserId } from '~/types'
 
 import '~/app.scss'
 import './Round.scss'
@@ -15,6 +15,7 @@ import { DuckBoard } from "~/components/DuckBoard";
 import { SocketContext } from "~/components/socket";
 import { makeEventListener } from "@solid-primitives/event-listener";
 import createRAF from "@solid-primitives/raf";
+import { game_pov_for_watcher, game_pov_with_userid, game_wfen_pov_for_watcher, game_wfen_pov_with_userid, getGameWithFen } from "~/session";
 
 type GameEndReason = {
   reason: string,
@@ -115,6 +116,7 @@ class Steps {
 export default function Round() {
 
   const params = useParams()
+  const [searchParams] = useSearchParams()
 
   let { page } = useContext(SocketContext)!
   onMount(() => {
@@ -123,19 +125,35 @@ export default function Round() {
 
 
   const user = createAsync<User>(() => getUser())
-  let pov = createAsync(() => getPov(params.game_id, user()?.id ?? 'black'))
+  const game = createAsync<GameWithFen | undefined>(() => getGameWithFen(params.game_id))
 
   return (<>
     <Suspense>
-      <Show when={pov()} fallback={<NotFound />}>{pov =>
-      <PovView pov={pov()}/>
-      }</Show>
+      <Show when={user() && game()} fallback={<NotFound />}>
+      <GameView user={user()!} game={game()!} color={searchParams.color === 'white' ? 'white': 'black'} />
+      </Show>
     </Suspense>
   </>)
 }
 
+function GameView(props: { user: User, game: GameWithFen, color?: Color }) {
 
-function PovView(props: { pov: Pov }) {
+  const player = createAsync<PovWithFen | undefined>(() => game_wfen_pov_with_userid(props.game, props.user.id))
+  const watcher_pov = createAsync<PovWithFen>(() => game_wfen_pov_for_watcher(props.game, props.color ?? 'white'))
+
+
+  return (<>
+    <Show when={player()} fallback={
+      <Show when={watcher_pov()}>{pov => 
+        <PovView is_watcher={true} pov={pov()} />
+      }</Show>
+    }>{pov =>
+      <PovView pov={pov()} />
+    }</Show>
+  </>)
+}
+
+function PovView(props: { pov: PovWithFen, is_watcher?: true }) {
 
 
   let { send, page, receive, cleanup } = useContext(SocketContext)!
@@ -173,16 +191,16 @@ function PovView(props: { pov: Pov }) {
   const [do_takeback, set_do_takeback] = createSignal(undefined, { equals: false })
 
   const pov = createMemo(() => props.pov)
+  const game = createMemo(() => pov().game)
   const player = createMemo(() => pov().player)
   const opponent = createMemo(() => pov().opponent)
-  const [wclock, set_w_clock] = createSignal(player().color === 'white' ? player().clock: opponent().clock)
-  const [bclock, set_b_clock] = createSignal(player().color === 'black' ? player().clock: opponent().clock)
+  const [wclock, set_w_clock] = createSignal(game().wclock)
+  const [bclock, set_b_clock] = createSignal(game().bclock)
   const player_clock = createMemo(() => player().color === 'white' ? wclock(): bclock())
   const opponent_clock = createMemo(() => opponent().color === 'white' ? wclock(): bclock())
   const [orientation, set_orientation] = createSignal(player().color)
   const steps = Steps.make(pov().game.sans)
   const fen = createMemo(() => steps.selected_fen)
-
 
   const [game_end_reason, set_game_end_reason] = createSignal(make_game_end_reason(pov().game))
   const clock_running_color = createMemo(() => !game_end_reason() ? fen_color(steps.last_fen) : undefined)
@@ -194,6 +212,10 @@ function PovView(props: { pov: Pov }) {
   const set_selected_ply = (_: number) => steps.selected_ply = _
 
   const view_only = createMemo(() => {
+    if (props.is_watcher) {
+      return true
+    }
+
     if (game_end_reason()) {
       return true
     }

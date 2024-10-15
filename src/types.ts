@@ -1,7 +1,8 @@
-import { Board, Castles, Color, DuckChess, parseFen, SquareSet } from 'duckops'
-import { GamePlayerId, UserPerfs } from './db'
+import { Board, ByColor, Castles, Color, DuckChess, parseFen, SquareSet } from 'duckops'
+import { GamePlayerId, User, UserPerfs } from './db'
 
 
+export type Instant = number
 
 export const fen_color = (fen: string) => parseFen(fen).unwrap().turn
 
@@ -9,6 +10,21 @@ export type SessionId = string
 export type UserId = string
 export type GameId = string
 export type ProfileId = string
+
+export const PerfKeys = ["blitz", "rapid", "classical"]
+export type PerfKey = typeof PerfKeys[number]
+
+export type UserWithPerfs = {
+  user: User,
+  perfs: UserPerfs
+}
+
+export type LightPerf = {
+  user_id: UserId,
+  rating: number,
+  nb: number,
+  progress: number
+}
 
 export type Count = {
   draw: number,
@@ -31,6 +47,7 @@ export const time_controls = ['threetwo', 'fivefour', 'tenzero', 'twentyzero']
 
 export type TimeControl = typeof time_controls[number]
 
+
 export enum GameStatus {
   Created = 0,
   Started,
@@ -42,30 +59,64 @@ export enum GameStatus {
 }
 
 export type Player = {
+  id: GamePlayerId,
+  color: Color,
+  is_winner?: boolean,
   user_id: UserId,
   username: string,
   rating: number,
-  ratingDiff?: number,
-  color: Color,
-  clock: number
+  ratingDiff?: number
 }
 
-export type Game = {
+export type GameBase = {
     id: GameId,
-    fen: string,
+    wclock: Instant,
+    bclock: Instant,
+    created_at: Instant,
     sans: string[],
     status: GameStatus,
-    last_move_time: number
-    winner?: Color,
+    moved_at?: Instant
+    clock: TimeControl,
+    players: ByColor<Player>
 }
+
+export type Game = GameBase & { duckchess: DuckChess }
+export type GameWithFen = GameBase & { duckchess: string }
+
+
 
 export type Pov = {
     player: Player,
     opponent: Player,
-    clock: TimeControl,
-    game: Game
+    game: Game,
+    color: Color
 }
 
+export type PovWithFen = {
+    player: Player,
+    opponent: Player,
+    game: GameWithFen,
+    color: Color
+}
+
+
+
+export function game_player(game: Game): Player {
+  return game.players[game.duckchess.turn]
+}
+
+export const perf_key_of_clock = (clock: TimeControl): PerfKey => {
+  switch (clock) {
+    case "threetwo":
+    case "fivefour":
+      return "blitz"
+    case "tenzero":
+      return "rapid"
+    case "twentyzero":
+      return "classical"
+  }
+  throw ""
+}
 
 export const millis_for_increment = (clock: TimeControl) => {
 

@@ -1,161 +1,140 @@
 import { Dispatch, Message, Peer, peer_send } from "./dispatch";
-import { getGame, getPov } from "../session";
+import { game_pov_with_userid, getGame } from "../session";
 import { Board, Color, DuckChess, GameResult, makeFen, makeSan, opposite, parseFen, parseSan, parseUci, PositionHistory } from "duckops";
-import { DbGame, get_perfs_by_user_id, make_game_end, make_game_move, make_game_rating_diffs, User, UserPerfs } from "../db";
-import { Board_encode, Castles_encode, fen_color, Game, GameId, GameStatus, millis_for_increment, Player, Pov, UserId } from "../types";
+import { DbGame, get_perfs_by_user_id, make_game_end, make_game_move, make_game_rating_diffs, Perfs, User, UserPerfs } from "../db";
+import { Board_encode, Castles_encode, fen_color, Game, GameId, GameStatus, millis_for_increment, perf_key_of_clock, Player, Pov, TimeControl, UserId, game_player, UserWithPerfs } from "../types";
 import { revalidate } from "@solidjs/router";
 import { RoomCrowds } from "./nb_connecteds";
-import { Glicko_Rating, RatingDiffs } from "~/glicko";
+import { Glicko_Rating, RatingDiffs, ratingOf } from "../glicko";
+import { game_repo_set_rating_diffs, updateRating, user_api_update_perfs, user_api_pair_with_perfs } from "../user_api";
+import { StaticRouterSchema } from "vinxi";
+import { handleCacheHeaders } from "vinxi/http";
+import { prefixStorage } from "vinxi/dist/types/runtime/storage";
 
+type Event = any
+type Events = Event[]
+
+
+const game_user_id_pair = (game: Game): [UserId, UserId] => {
+    return [game.players.white.user_id, game.players.black.user_id]
+}
+
+const game_finish = (game: Game, status: GameStatus, winner?: Color) => {
+    game.status = status
+    if (winner !== undefined) {
+        game.players[winner].is_winner = true
+    }
+
+    let elapsed = Date.now() - (game.moved_at ?? game.created_at)
+    if (game_player(game).color === 'white') {
+        game.wclock = Math.max(0, game.wclock - elapsed)
+    } else {
+        game.bclock = Math.max(0, game.bclock - elapsed)
+    }
+    return game
+}
 
 const game_finished = (game: Game) => {
+    return game.status >= GameStatus.Ended
+}
+
+const game_playing = (game: Game) => {
     return game.status <= GameStatus.Started
 }
 
-
-
-const pov_can_resign = (pov: Pov) => {
-    return !game_finished(pov.game)
+const game_can_resign = (game: Game) => {
+    return game_playing(game)
 }
-const pov_can_move = (pov: Pov) => {
-    return !game_finished(pov.game)
+const game_can_move = (game: Game) => {
+    return game_playing(game)
 }
 
+const game_playable_by = (game: Game, color: Color) => {
+    return game_playing(game) && game.duckchess.turn === color
+}
 
-async function update_perfs(game: Game, w_player: Player, b_player: Player) {
+const game_outoftime = (game: Game) => {
+    throw 3// TODO
+}
+
+const perfs_add_rating = (perfs: Perfs, gl: Glicko_Rating) => {
+    return {
+        id: perfs.id,
+        gl_id: perfs.gl_id,
+        nb: perfs.nb + 1,
+        gl
+    }
+}
+
+async function perfs_save(game: Game, white: UserWithPerfs, black: UserWithPerfs) {
    if (!game_finished(game) || game.sans.length <= 2) {
     return
    }
 
-   let w_rating = await user_api_with_perfs(w_player.user_id)
-   let b_rating = await user_api_with_perfs(b_player.user_id)
 
-   if (!w_rating || !b_rating) {
-       throw "No rating for user"
-   }
+   
+    let perf_key = perf_key_of_clock(game.clock)
+    const ratingOf = (perfs: UserPerfs) => perfs.perfs[perf_key].gl
+    const mkPerfs = (def: UserPerfs, ratings: Glicko_Rating) => {
+        let res = { ...def }
 
-   let [ratingsW, ratingsB] = updateRating(w_rating, b_rating, game)
+        res.perfs[perf_key] = perfs_add_rating(def.perfs[perf_key], ratings)
+        return res
+    }
 
+   let [ratingsW, ratingsB] = [{...ratingOf(white.perfs)}, {...ratingOf(black.perfs)}]
+   
+   updateRating(ratingsW, ratingsB, game)
 
-   let ratingDiffs: RatingDiffs = [ratingOf(ratingsW) - ratingOf(w_rating), ratingOf(ratingsB) - ratingOf(b_rating)]
+   let ratingDiffs: RatingDiffs = [ratingsW.rating - ratingOf(white.perfs).rating, ratingsB.rating - ratingOf(black.perfs).rating]
 
+   let [perfsW, perfsB] = [mkPerfs(white.perfs, ratingsW), mkPerfs(black.perfs, ratingsB)]
 
    await game_repo_set_rating_diffs(game.id, ratingDiffs)
-   await user_api_update_perfs(w_player, ratingsW, b_player, ratingsB)
-}
-
-const ratingOf = (rating: Glicko_Rating) => {
-    return Math.floor(rating.rating)
-}
-
-const game_repo_set_rating_diffs = async (id: GameId, diffs: RatingDiffs) => {
-    await make_game_rating_diffs(id, diffs)
-}
-
-const user_api_with_perfs = async (user_id: UserId): Promise<UserPerfs | undefined> => {
-    return await get_perfs_by_user_id(user_id)
-}
-
-const user_api_update_perfs = async (white: Player, w_rating: Glicko_Rating, black: Player, b_rating: Glicko_Rating) => {
-    await make_profile_rating_update(white.user_id, w_rating)
-    await make_profile_rating_update(black.user_id, b_rating)
-}
-
-const updateRating = (white: Glicko_Rating, black: Glicko_Rating, game: Game) => {
-
-    switch (game.winner) {
-        case undefined: return glicko2_GameResult(white, black, true)
-        case "white": return glicko2_GameResult(white, black, false)
-        case "black": return glicko2_GameResult(black, white, false)
-    }
+   await user_api_update_perfs({ white: [white.perfs, perfsW], black: [black.perfs, perfsB] }, perf_key)
 }
 
 
-const glicko2_GameResult = (winner: Glicko_Rating, loser: Glicko_Rating, isDraw: boolean) => {
-    return [winner, loser]
+async function finisher_out_of_time(game: Game) {
+    let winner = opposite(game_player(game).color)
+    return await finisher_other(game, GameStatus.Outoftime, winner)
 }
 
-
-async function finisher_out_of_time(pov: Pov) {
+async function finisher_other(prev: Game, status: GameStatus, winner?: Color) {
     let events = []
 
-    let status = GameStatus.Outoftime
-    let winner = opposite(fen_color(pov.game.fen))
-
-    let [wclock, bclock] = [pov.player.clock, pov.opponent.clock]
-    if (pov.player.color === 'black') {
-        [wclock, bclock] = [bclock, wclock]
-    }
-
-
+    let { wclock, bclock } = prev
 
     await make_game_end({
-        id: pov.game.id,
-        wclock,
-        bclock,
-        status,
-        winner
-    })
-
-    let game = pov.game
-
-    game.status = status
-    game.winner = winner
-
-
-    events.push({ t: 'flag', d: { status, winner } })
-
-    let [white, black] = [pov.player, pov.opponent]
-
-    if (pov.player.color === 'black') {
-        [white, black] = [black, white]
-    }
-
-    events.push(await update_perfs(game, white, black))
-
-    return events
-}
-
-async function finisher_other(pov: Pov, status: GameStatus, winner?: Color) {
-    let events = []
-
-    let elapsed_time = Date.now() - pov.game.last_move_time
-    pov.player.clock = Math.max(0, pov.player.clock - elapsed_time)
-
-    if (pov.player.clock === 0) {
-        return await finisher_out_of_time(pov)
-    }
-
-    let [w_player, b_player] = [pov.player, pov.opponent]
-
-    if (pov.player.color === 'black') {
-        [w_player, b_player] = [b_player, w_player]
-    }
-
-
-    let [wclock, bclock] = [w_player.clock, b_player.clock]
-
-    await make_game_end({
-        id: pov.game.id,
+        id: prev.id,
         status,
         wclock,
         bclock,
         winner: winner ?? null
     })
 
-    let game = pov.game
-
-    game.status = status
-    game.winner = winner
+    let game = game_finish(prev, status, winner)
 
     events.push({ t: 'endData', d: { status, winner, clock: { wclock, bclock } } })
 
-    events.push(await update_perfs(game, w_player, b_player))
+    let pperfs = await user_api_pair_with_perfs(game_user_id_pair(game))
+
+    if (!pperfs) {
+        throw "No Perfs for users in game " + game.id
+    }
+
+    let [white, black] = pperfs
+
+    await perfs_save(game, white, black)
 
     return events
 }
 
 async function play_uci(pov: Pov, uci: string) {
+
+    if (!game_playable_by(pov.game, pov.player.color)) {
+        throw "Not playable by " + pov.player.color
+    }
 
     let events = []
     let history = history_step_builder(pov.game.sans)
@@ -171,12 +150,11 @@ async function play_uci(pov: Pov, uci: string) {
         throw 'Not your turn'
     }
 
-    pov.player.clock += millis_for_increment(pov.clock)
-    let last_move_time = Date.now()
-
-    let [wclock, bclock] = [pov.player.clock, pov.opponent.clock]
-    if (pov.player.color === 'black') {
-        [wclock, bclock] = [bclock, wclock]
+    let {wclock, bclock} = pov.game
+    if (before_game.turn === 'white') {
+        wclock += millis_for_increment(pov.game.clock)
+    } else {
+        bclock += millis_for_increment(pov.game.clock)
     }
 
     history.append(move)
@@ -241,8 +219,7 @@ async function play_uci(pov: Pov, uci: string) {
         epSquare,
         wclock,
         bclock,
-        winner,
-        last_move_time
+        winner
     })
     events.push({ t: 'move', d: { step: { uci, san, fen }, clock: { wclock, bclock } } })
 
@@ -279,54 +256,59 @@ export class Round extends Dispatch {
         return this.params
     }
 
-    async getPov() {
-        return getPov(this.game_id, this.user.id)
+    async with_game<A>(f: (game: Game) => Promise<A>) : Promise<A> {
+        let g = await getGame(this.game_id)
+        if (!g) {
+            throw "No game with id " + this.game_id
+        }
+        return f(g)
+    }
+
+    async with_pov<A>(f: (pov?: Pov) => Promise<A>): Promise<A> {
+        return this.with_game(async g => f(await game_pov_with_userid(g, this.user.id)))
+    }
+
+    async handle(op: (pov: Pov) => Promise<Events>): Promise<void> {
+        return this.with_pov(pov => {
+            if (pov) {
+                return this.handle_and_publish(op(pov))
+            }
+            return Promise.reject("Bad pov request " + this.user.username)
+        })
+    }
+
+    async handle_game(op: (game: Game) => Promise<Events>): Promise<void> {
+        return this.with_game(game => this.handle_and_publish(op(game)))
+    }
+
+    async handle_and_publish(fu_events: Promise<Events>): Promise<void> {
+        let events = await fu_events
+        return this.publish_events(events)
     }
 
     async _message(msg: Message) {
 
         let username = this.user.username
 
-        let pov = await this.getPov()
-
-        if (!pov) {
-            this.terminate()
-            return
-        }
-
-        let player_color: Color | undefined = pov.player.username === username ? pov.player.color :
-            pov.opponent.username === username ? pov.opponent.color : undefined
-
         switch (msg.t) {
             case 'resign': {
-                if (player_color === undefined || !pov_can_resign(pov)) {
-                    throw 'Cant Resign'
-                }
-
-                 this.publish_events(await finisher_other(pov, GameStatus.Resign, opposite(player_color)))
+                await this.handle(async pov => {
+                    if (!game_can_resign(pov.game)) {
+                        throw 'Cant Resign'
+                    }
+                    return finisher_other(pov.game, GameStatus.Resign, opposite(pov.color))
+                })
             } break
             case 'flag': {
-                let elapsed_time = Date.now() - pov.game.last_move_time
-                pov.player.clock = Math.max(0, pov.player.clock - elapsed_time)
-
-                if (pov.player.clock === 0) {
-                    return this.publish_events(await finisher_out_of_time(pov))
-                }
+                await this.handle_game(async game => {
+                    if (game_outoftime(game)) {
+                        return finisher_out_of_time(game)
+                    }
+                    return []
+                })
             } break
             case 'move': {
-
-                 if (player_color === undefined || !pov_can_move(pov)) {
-                    throw 'Cant Move'
-                }
-
-                let elapsed_time = Date.now() - pov.game.last_move_time
-                pov.player.clock = Math.max(0, pov.player.clock - elapsed_time)
-
-                if (pov.player.clock === 0) {
-                    return this.publish_events(await finisher_out_of_time(pov))
-                }
-
-                this.publish_events(await play_uci(pov, msg.d))
+                await this.handle(pov => play_uci(pov, msg.d))
             }
         }
     }
