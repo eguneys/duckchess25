@@ -6,6 +6,7 @@ import "~/app.scss";
 import './User.scss'
 import { SocketContext, SocketProvider } from "~/components/socket"
 import { getUser, getUserJsonView, resetUser } from "~/components/cached"
+import { display_Glicko } from "~/glicko";
 
 export default function Home() {
     const params = useParams()
@@ -67,7 +68,19 @@ export default function Home() {
                                         </Show>
                                     </div>
                                 </div>
-                                <p class='activity'>{user().count.game} games played. </p>
+                                <div class='perfs'>
+                                    <div class='blitz'><i class='icon' data-icon=""></i> Blitz <span class='rating'>{display_Glicko(user().perfs.blitz.gl)}</span> <span class='nb-games'>{user().perfs.blitz.nb}</span></div>
+                                    <div class='rapid'><i class='icon' data-icon=""></i> Rapid <span class='rating'>{display_Glicko(user().perfs.rapid.gl)}</span> <span class='nb-games'>{user().perfs.rapid.nb}</span></div>
+                                    <div class='classical'><i class='icon' data-icon=""></i> Classical <span class='rating'>{display_Glicko(user().perfs.classical.gl)}</span> <span class='nb-games'>{user().perfs.classical.nb}</span></div>
+                                </div>
+                                <div class='activity'>
+                                    <div class='nbs'>
+                                        <p class='game'> {user().count.game} played</p>
+                                        <p class='win'>{user().count.win} won</p>
+                                        <p class='loss'>{user().count.loss} lost</p>
+                                        <p class='draw'>{user().count.draw} drawn</p>
+                                    </div>
+                                </div>
                             </>
                         }</Show>
                 </Suspense>

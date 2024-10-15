@@ -36,14 +36,8 @@ type DbGlicko = {
   v: number
 }
 
-export type Glicko = {
-  r: number,
-  d: number,
-  v: number
-}
-
 export type Perfs = {
-  gl: Glicko,
+  gl: Glicko_Rating,
   nb: number
 }
 
@@ -427,7 +421,7 @@ export async function make_game_rating_diffs(id: GameId, diffs: [number, number]
 
 }
 
-async function get_gl_by_id(id: DbGlickoId): Promise<Glicko | undefined> {
+async function get_gl_by_id(id: DbGlickoId): Promise<Glicko_Rating | undefined> {
 
   let db_glicko = await db.prepare<DbGlickoId, DbGlicko>(`SELECT * FROM glickos WHERE glickos.id = ?`).get(id)
 
@@ -438,9 +432,9 @@ async function get_gl_by_id(id: DbGlickoId): Promise<Glicko | undefined> {
   let { r, d, v } = db_glicko
 
   return {
-    r,
-    d,
-    v
+    rating: r,
+    deviation: d,
+    volatility: v
   }
 }
 

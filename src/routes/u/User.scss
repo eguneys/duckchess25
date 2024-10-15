@@ -7,7 +7,7 @@ main.profile {
 
     .section {
 
-        background: $primary-dark2;
+        background: $primary-dark3;
 
         flex: 0 0 80%;
         display: flex;
@@ -42,10 +42,11 @@ main.profile {
                         user-select: none;
                         cursor: pointer;
 
-                        padding: 0.4em;
+                        padding: 0.6em;
                         background: $c-bad;
                         color: $text-light;
                         border: 1px solid $text-dark;
+                        border-radius: 4px;
 
                         &:active {
                             text-decoration: underline;
@@ -54,12 +55,33 @@ main.profile {
                 }
         }
 
+        .perfs {
+            display: flex;
+            justify-content: space-around;
+            font-size: 1.3em;
+            color: $text;
+            background: $primary-dark2;
+            padding: 1em;
+            border-bottom: 1px solid $c-border;
+
+            & .icon {
+                color: $text;
+            }
+        }
+
         .activity {
             display: flex;
-            justify-content: center;
-            padding: 1em;
+            flex-flow: column;
             min-height: 10em;
             color: $text-light;
+            justify-content: stretch;
+            padding: 0.5em;
+
+            .nbs {
+                display: flex;
+                justify-content: space-around;
+                border-bottom: 1px solid $c-border;
+            }
         }
     }
 }
