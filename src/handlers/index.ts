@@ -9,7 +9,6 @@ import { SessionId } from "~/types"
 import { User } from "~/db"
 
 export async function dispatch_peer(peer: Peer, data: string) {
-
     const subbed_sid = [...peer._subscriptions].find(_ => _.includes('sid'))
 
     let sid: SessionId
@@ -20,13 +19,17 @@ export async function dispatch_peer(peer: Peer, data: string) {
         sid = subbed_sid.slice(4)
 
     } else {
+
         if (typeof message !== 'object') {
             throw 'Bad parse ' + data
         }
 
+        if (message.path === 'leave') {
+            return
+        }
 
         if (!message.sid || typeof message.sid !== 'string') {
-            throw 'Bad sid ' + message
+            throw 'No sid ' + JSON.stringify(message)
         }
 
         sid = message.sid
@@ -44,7 +47,6 @@ export async function dispatch_peer(peer: Peer, data: string) {
         throw "No user for dispatch_peer " + sid
     }
 
-
     const subbed_path = [...peer._subscriptions].find(_ => _.includes('room'))
     let old_path = subbed_path ? subbed_path.slice(5) : undefined
     let path = subbed_path ? subbed_path.slice(5) : 'site'
@@ -53,7 +55,6 @@ export async function dispatch_peer(peer: Peer, data: string) {
     if (typeof message === 'object' && typeof message.path === 'string') {
         path = message.path
     }
-
 
     if (!old_path || old_path !== path) {
         if (old_path) await dispatch_path(old_path, user, peer).leave()

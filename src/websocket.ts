@@ -32,6 +32,7 @@ export default eventHandler({
             try {
                 await dispatch_peer(peer, text)
             } catch (e) {
+                peer.send(JSON.stringify({t: 'reload', d: true }))
                 log_websocket_error(e)
             }
         }

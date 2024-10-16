@@ -59,6 +59,7 @@ export type DbCount = {
 export type DbGamePlayer = {
   id: GamePlayerId,
   user_id: UserId,
+  is_winner: number,
   color: Color,
   rating: number,
   ratingDiff: number | null
@@ -82,8 +83,7 @@ export type DbGame = {
   fullmoves: number,
   turn: Color,
   castles: Buffer,
-  epSquare: number | null,
-  winner: Color | null
+  epSquare: number | null
 }
 
 type DbGameEndUpdate = {
@@ -91,7 +91,7 @@ type DbGameEndUpdate = {
   wclock: number,
   bclock: number,
   status: GameStatus,
-  winner: Color | null
+  winner: GamePlayerId | null
 }
 
 type DbGameMoveUpdate = {
@@ -108,7 +108,7 @@ type DbGameMoveUpdate = {
   epSquare: number | null,
   wclock: number,
   bclock: number,
-  winner: Color | null
+  winner: GamePlayerId | null
 }
 
 export type User = {
@@ -128,12 +128,14 @@ export type Session = {
 }
 
 export const gen_id = () => {
-  return Math.random().toString(16).slice(8)
+  return Math.random().toString(16).slice(2, 10)
 }
 
+let idx = 0
 export const create_session = (): Session => {
   return {
     id: gen_id() + gen_id(),
+    //id: `${idx++}`,
     user_id: null
   }
 }
@@ -144,7 +146,8 @@ const create_game_player = (user_id: UserId, color: Color, rating: number) => {
     user_id,
     color,
     rating,
-    ratingDiff: null
+    ratingDiff: null,
+    is_winner: 0
   }
 }
 
@@ -178,8 +181,7 @@ const create_game = (white: UserId, black: UserId, white_rating: number, black_r
     fullmoves: d.fullmoves,
     turn: d.turn,
     castles: Castles_encode(d.castles),
-    epSquare: d.epSquare ?? null,
-    winner: null
+    epSquare: d.epSquare ?? null
   }
 
   return [w_player, b_player, game]
@@ -265,6 +267,7 @@ async function create_databases() {
   "color" TEXT,
   "rating" NUMBER, 
   "ratingDiff" NUMBER,
+  "is_winner" NUMBER,
   FOREIGN KEY (user_id) REFERENCES users(id)
   )`
 
@@ -288,7 +291,6 @@ async function create_databases() {
   "turn" TEXT,
   "castles" BLOB,
   "epSquare" NUMBER,
-  "winner" TEXT,
   FOREIGN KEY (w_player_id) REFERENCES game_players(id),
   FOREIGN KEY (b_player_id) REFERENCES game_players(id)
   )`
@@ -325,7 +327,7 @@ export async function update_session(u: { id: SessionId, user_id: UserId }) {
 export async function new_game(gamep: [DbGamePlayer, DbGamePlayer, DbGame]) {
   let [w_player, b_player, game] = gamep
 
-    let ss = db.prepare(`INSERT INTO game_players VALUES (@id, @user_id, @color, @rating, @ratingDiff)`)
+    let ss = db.prepare(`INSERT INTO game_players VALUES (@id, @user_id, @color, @rating, @ratingDiff, @is_winner)`)
       
   await ss.run(w_player)
   await ss.run(b_player)
@@ -335,7 +337,7 @@ export async function new_game(gamep: [DbGamePlayer, DbGamePlayer, DbGame]) {
       @wclock, @bclock, @moved_at, @status,
       @cycle_length, @rule50_ply, @board, @sans,
       @halfmoves, @fullmoves, @turn, @castles,
-      @epSquare, @winner)`).run(game)
+      @epSquare)`).run(game)
 
 }
 
@@ -352,14 +354,28 @@ export async function game_by_id(game_id: GameId) {
 export async function make_game_end(u: DbGameEndUpdate) {
   db.prepare(`UPDATE games SET
     status = @status,
-    winner = @winner,
     wclock = @wclock,
     bclock = @bclock
    WHERE games.id = @id`).run(u)
+
+   if (u.winner) await update_game_players_as_winner(u.winner)
+  }
+
+  async function update_game_players_as_winner(id: GamePlayerId) {
+    await db.prepare(`UPDATE game_players SET is_winner = 1 WHERE game_players.id = ?`).run(id)
+  }
+
+export async function update_game_rating_diffs(ids: [GamePlayerId, GamePlayerId], diffs: [number, number]) {
+    await update_game_player_rating_diff(ids[0], diffs[0])
+    await update_game_player_rating_diff(ids[1], diffs[1])
+}
+
+async function update_game_player_rating_diff(id: GamePlayerId, diff: number) {
+  await db.prepare(`UPDATE game_players SET ratingDiff = ? WHERE game_players.id = ?`).run(id, diff)
 }
 
 export async function make_game_move(u: DbGameMoveUpdate) {
-  db.prepare(`UPDATE games SET 
+  await db.prepare(`UPDATE games SET 
     status = @status, 
     cycle_length = @cycle_length,
     rule50_ply = @rule50_ply,
@@ -371,9 +387,12 @@ export async function make_game_move(u: DbGameMoveUpdate) {
     epSquare = @epSquare,
     wclock = @wclock,
     bclock = @bclock,
-    moved_at = @moved_at,
-    winner = @winner
+    moved_at = @moved_at
     WHERE games.id = @id`).run({...u, moved_at: Date.now() })
+
+  if (u.winner) {
+    update_game_players_as_winner(u.winner)
+  }
 }
 
 
@@ -415,10 +434,6 @@ export async function dropped_users_in_last_minute() {
   return await db.prepare<number, { id: UserId }>(`SELECT id from users WHERE is_dropped >= ?`).all(Date.now() - 1000 * 60)
 }
 
-
-export async function make_game_rating_diffs(id: GameId, diffs: [number, number]) {
-  throw 'make game rating diffs'
-}
 
 export async function get_perfs_of_user_by_key(user_id: UserId, key: PerfKey) {
 

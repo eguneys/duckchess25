@@ -1,3 +1,4 @@
+import { Navigate, reload } from "@solidjs/router";
 import { createContext, createSignal, JSX, onCleanup, onMount } from "solid-js";
 import { UserId } from "~/types";
 
@@ -197,6 +198,10 @@ export const SocketProvider = (props: { children: JSX.Element }) => {
     let socket = StrongSocket.create()
 
     socket.add_default_handlers({
+        reload() {
+            socket.disconnect()
+            socket.connect()
+        },
         crowd(ids: UserId[]) {
             set_crowd(ids)
         }

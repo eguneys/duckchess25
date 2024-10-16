@@ -105,6 +105,14 @@ export function game_player(game: Game): Player {
   return game.players[game.duckchess.turn]
 }
 
+export const game_winner = (game: GameBase) => {
+    if (game.players.white.is_winner) {
+        return "white"
+    } else if (game.players.black.is_winner) {
+        return "black"
+    }
+}
+
 export const perf_key_of_clock = (clock: TimeControl): PerfKey => {
   switch (clock) {
     case "threetwo":

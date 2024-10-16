@@ -196,7 +196,8 @@ export const getGamePlayer = async (id: GamePlayerId): Promise<Player | undefine
     username: u.username,
     rating: p.rating,
     ratingDiff: p.ratingDiff ?? undefined,
-    color: p.color
+    color: p.color,
+    is_winner: p.is_winner === 1
   }
 }
 

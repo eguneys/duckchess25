@@ -228,7 +228,7 @@ export const DuckBoard = (props: { can_takeback: (_: boolean) => void, on_user_m
     }).filter(Boolean) as Piece[]
 
     let duck = duckchess().board.get_duck()
-    if (duck) {
+    if (duck !== undefined) {
       ps.push({
         role: 'd',
         file: makeSquare(duck)[0],

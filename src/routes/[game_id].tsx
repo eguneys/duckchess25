@@ -1,10 +1,10 @@
 import { Title } from "@solidjs/meta";
 import { A, createAsync, useParams, useSearchParams } from "@solidjs/router";
 import { HttpStatusCode } from "@solidjs/start";
-import { createEffect, createMemo, createSignal, For, on, onCleanup, onMount, Show, Signal, Suspense, useContext } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Match, on, onCleanup, onMount, Show, Signal, Suspense, Switch, useContext } from "solid-js";
 import { DbGame, User } from "~/db";
 import { getUser } from "~/components/cached";
-import { fen_color, Game, GameStatus, GameWithFen, Player, Pov, PovWithFen, UserId } from '~/types'
+import { fen_color, Game, game_winner, GameStatus, GameWithFen, Player, Pov, PovWithFen, UserId } from '~/types'
 
 import '~/app.scss'
 import './Round.scss'
@@ -192,6 +192,7 @@ function PovView(props: { pov: PovWithFen, is_watcher?: true }) {
 
   const pov = createMemo(() => props.pov)
   const game = createMemo(() => pov().game)
+  const winner = createMemo(() => game_winner(pov().game))
   const player = createMemo(() => pov().player)
   const opponent = createMemo(() => pov().opponent)
   const [wclock, set_w_clock] = createSignal(game().wclock)
@@ -200,10 +201,15 @@ function PovView(props: { pov: PovWithFen, is_watcher?: true }) {
   const opponent_clock = createMemo(() => opponent().color === 'white' ? wclock(): bclock())
   const [orientation, set_orientation] = createSignal(player().color)
   const steps = Steps.make(pov().game.sans)
-  const fen = createMemo(() => steps.selected_fen)
+  const selected_fen = createMemo(() => steps.selected_fen)
+  const last_fen = createMemo(() => steps.last_fen)
 
-  const [game_end_reason, set_game_end_reason] = createSignal(make_game_end_reason(pov().game))
+  const [game_end_reason, set_game_end_reason] = createSignal(make_game_end_reason({ status: game().status, winner: winner()}))
   const clock_running_color = createMemo(() => !game_end_reason() ? fen_color(steps.last_fen) : undefined)
+
+  const turn = createMemo(() => parseFen(last_fen()).unwrap().turn)
+  const is_your_turn = createMemo(() => turn() === player().color)
+  const is_opponents_turn = createMemo(() => turn() === opponent().color)
 
   const go_to_ply = (ply: number) => {
     steps.selected_ply = ply
@@ -288,11 +294,29 @@ function PovView(props: { pov: PovWithFen, is_watcher?: true }) {
     send({ t: 'resign' })
   }
 
+
+  const format_title = createMemo(() => {
+    if (props.is_watcher) {
+      return `${player().username} - ${opponent().username} o spectator o duckchess.org`
+    }
+
+    if (game_end_reason()) {
+      return `Game Ended - Play - ${opponent().username} o duckchess.org`
+    }
+
+    if (is_your_turn()) {
+      return `Your Turn - Play - ${opponent().username} o duckchess.org`
+    } else {
+      return `Waiting For Opponent - Play - ${opponent().username} o duckchess.org`
+    }
+
+  })
+
   return (<>
     <main class='round'>
-      <Title>Play </Title>
+      <Title>{format_title()}</Title>
       <div class='board' onWheel={e => on_wheel(e)}>
-        <DuckBoard can_takeback={set_can_takeback} view_only={view_only()} orientation={orientation()} on_user_move={on_user_move} do_uci={do_uci()} do_takeback={do_takeback()} fen={fen()} />
+        <DuckBoard can_takeback={set_can_takeback} view_only={view_only()} orientation={orientation()} on_user_move={on_user_move} do_uci={do_uci()} do_takeback={do_takeback()} fen={selected_fen()} />
       </div>
       <SideView 
         can_resign={can_resign()}
@@ -498,7 +522,7 @@ function Moves(props: { game_end_reason?: GameEndReason, steps: Step[], set_sele
         <Show when={props.game_end_reason}>{reason => 
           <div class='result-wrap'>
             <Show when={reason().winner}>{winner => 
-              <p class='result'> {capitalize(winner())} is victorious. </p>}</Show>
+              <p class='result'> {winner() === 'white' ? '1-0' : '0-1'} </p>}</Show>
               <p class='status'>{reason().reason}</p>
           </div>
           }</Show>

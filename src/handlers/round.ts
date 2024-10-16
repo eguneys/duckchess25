@@ -1,22 +1,32 @@
 import { Dispatch, Message, Peer, peer_send } from "./dispatch";
 import { game_pov_with_userid, getGame } from "../session";
 import { Board, Color, DuckChess, GameResult, makeFen, makeSan, opposite, parseFen, parseSan, parseUci, PositionHistory } from "duckops";
-import { DbGame, get_perfs_by_user_id, make_game_end, make_game_move, make_game_rating_diffs, Perfs, User, UserPerfs } from "../db";
+import { DbGame, get_perfs_by_user_id, make_game_end, make_game_move, Perfs, User, UserPerfs } from "../db";
 import { Board_encode, Castles_encode, fen_color, Game, GameId, GameStatus, millis_for_increment, perf_key_of_clock, Player, Pov, TimeControl, UserId, game_player, UserWithPerfs } from "../types";
 import { revalidate } from "@solidjs/router";
 import { RoomCrowds } from "./nb_connecteds";
 import { Glicko_Rating, RatingDiffs, ratingOf } from "../glicko";
 import { game_repo_set_rating_diffs, updateRating, user_api_update_perfs, user_api_pair_with_perfs } from "../user_api";
-import { StaticRouterSchema } from "vinxi";
-import { handleCacheHeaders } from "vinxi/http";
-import { prefixStorage } from "vinxi/dist/types/runtime/storage";
 
 type Event = any
 type Events = Event[]
 
+const game_player_id_pair = (game: Game): [UserId, UserId] => {
+    return [game.players.white.id, game.players.black.id]
+}
 
 const game_user_id_pair = (game: Game): [UserId, UserId] => {
     return [game.players.white.user_id, game.players.black.user_id]
+}
+
+const game_clock_update = (game: Game) => {
+    let increment = millis_for_increment(game.clock)
+    let elapsed = Date.now() - (game.moved_at ?? game.created_at)
+    if (game_player(game).color === 'white') {
+        game.wclock = Math.max(0, game.wclock - elapsed + increment)
+    } else {
+        game.bclock = Math.max(0, game.bclock - elapsed + increment)
+    }
 }
 
 const game_finish = (game: Game, status: GameStatus, winner?: Color) => {
@@ -25,12 +35,8 @@ const game_finish = (game: Game, status: GameStatus, winner?: Color) => {
         game.players[winner].is_winner = true
     }
 
-    let elapsed = Date.now() - (game.moved_at ?? game.created_at)
-    if (game_player(game).color === 'white') {
-        game.wclock = Math.max(0, game.wclock - elapsed)
-    } else {
-        game.bclock = Math.max(0, game.bclock - elapsed)
-    }
+    game_clock_update(game)
+
     return game
 }
 
@@ -90,7 +96,7 @@ async function perfs_save(game: Game, white: UserWithPerfs, black: UserWithPerfs
 
    let [perfsW, perfsB] = [mkPerfs(white.perfs, ratingsW), mkPerfs(black.perfs, ratingsB)]
 
-   await game_repo_set_rating_diffs(game.id, ratingDiffs)
+   await game_repo_set_rating_diffs(game_player_id_pair(game), ratingDiffs)
    await user_api_update_perfs({ white: [white.perfs, perfsW], black: [black.perfs, perfsB] }, perf_key)
 }
 
@@ -110,7 +116,7 @@ async function finisher_other(prev: Game, status: GameStatus, winner?: Color) {
         status,
         wclock,
         bclock,
-        winner: winner ?? null
+        winner: winner ? prev.players[winner].id : null
     })
 
     let game = game_finish(prev, status, winner)
@@ -150,14 +156,16 @@ async function play_uci(pov: Pov, uci: string) {
         throw 'Not your turn'
     }
 
+    game_clock_update(pov.game)
     let {wclock, bclock} = pov.game
-    if (before_game.turn === 'white') {
-        wclock += millis_for_increment(pov.game.clock)
-    } else {
-        bclock += millis_for_increment(pov.game.clock)
+
+    let err = history.validate_and_append(move)
+
+
+    if (err) {
+        throw `Cant play ` + err
     }
 
-    history.append(move)
     let result = history.computeGameResult()
 
     let status = pov.game.status
@@ -192,6 +200,7 @@ async function play_uci(pov: Pov, uci: string) {
     let board = Board_encode(last.board)
 
     let san = makeSan(before_game, move)
+
     pov.game.sans.push(san)
     let sans = pov.game.sans.join(' ')
 
@@ -219,7 +228,7 @@ async function play_uci(pov: Pov, uci: string) {
         epSquare,
         wclock,
         bclock,
-        winner
+        winner: winner ? pov.game.players[winner].id : null
     })
     events.push({ t: 'move', d: { step: { uci, san, fen }, clock: { wclock, bclock } } })
 
@@ -287,7 +296,6 @@ export class Round extends Dispatch {
     }
 
     async _message(msg: Message) {
-
         let username = this.user.username
 
         switch (msg.t) {
