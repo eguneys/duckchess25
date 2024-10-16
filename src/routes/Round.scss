@@ -98,10 +98,17 @@ main.round {
                 0 1px 5px 0 rgba(0, 0, 0, .12);
         }
 
+    .user-top {
+        background: linear-gradient($primary-dark2, $text-dark 40%);
+    }
+
+    .user-bot {
+        background: linear-gradient(to top, $primary-dark2, $text-dark 40%);
+    }
+
     .user-bot, .user-top {
         display: flex;
         border-radius: 3px;
-        background: linear-gradient($primary-dark2, $text-dark 40%);
         color: $text-light;
         padding: 1em;
         align-items: center;

@@ -60,7 +60,12 @@ const game_playable_by = (game: Game, color: Color) => {
 }
 
 const game_outoftime = (game: Game) => {
-    throw 3// TODO
+    let elapsed = Date.now() - (game.moved_at ?? game.created_at)
+    if (game_player(game).color === 'white') {
+        return game.wclock - elapsed <= 0
+    } else {
+        return game.bclock - elapsed <= 0
+    }
 }
 
 const perfs_add_rating = (perfs: Perfs, gl: Glicko_Rating) => {
