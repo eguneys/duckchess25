@@ -2,17 +2,19 @@ import { Peer, Dispatch, peer_send, Message } from "./dispatch";
 import { create_and_new_game, gen_id, new_game, User, user_by_username } from "../db";
 import { perf_key_of_clock, time_controls, TimeControl } from "../types";
 import { getLightPerf, getLightPerfByUsername } from "../session";
+import { Glicko_Rating, provisional } from "../glicko";
 
 
 export type Hook = {
     id: string,
     u: string,
     rating: number,
-    clock: TimeControl
+    clock: TimeControl,
+    provisional: boolean
 }
 
-function create_hook(u: string, rating: number, clock: TimeControl) {
-    return { id: gen_id(), u, rating, clock }
+function create_hook(u: string, rating: Glicko_Rating, clock: TimeControl) {
+    return { id: gen_id(), u, rating: Math.floor(rating.rating), clock, provisional: provisional(rating) }
 }
 
 export class Lobby extends Dispatch {

@@ -1,5 +1,6 @@
 import { Board, ByColor, Castles, Color, DuckChess, parseFen, SquareSet } from 'duckops'
 import { GamePlayerId, User, UserPerfs } from './db'
+import { Glicko_Rating } from './glicko'
 
 
 export type Instant = number
@@ -21,7 +22,7 @@ export type UserWithPerfs = {
 
 export type LightPerf = {
   user_id: UserId,
-  rating: number,
+  rating: Glicko_Rating,
   nb: number,
   progress: number
 }
@@ -65,7 +66,8 @@ export type Player = {
   user_id: UserId,
   username: string,
   rating: number,
-  ratingDiff?: number
+  ratingDiff?: number,
+  provisional: boolean
 }
 
 export type GameBase = {

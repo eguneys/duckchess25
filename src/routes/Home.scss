@@ -1,16 +1,35 @@
 @import '~/_variables';
+
+
+#app {
+    --main-max-width: 1400px;
+}
+
+
+
 main.home {
 
     display: grid;
 
-    grid-template-areas: 'counters lobby'
-        'create lobby'
-        'featured leaderboard';
+    grid-template-areas: 'counters'
+    'create'
+    'lobby'
+    'featured'
+    'leaderboard';
 
-    grid-template-rows: 1em 50vh auto;
-    grid-template-columns: 1fr 1fr;
-    row-gap: 1em;
     column-gap: 1em;
+    row-gap: 1em;
+
+    @media (min-width: 799.3px) {
+        grid-template-areas: 'counters lobby'
+            'create lobby'
+            'featured leaderboard';
+
+
+        grid-template-rows: 1em 50vh auto;
+        grid-template-columns: 1fr 1fr;
+    }
+
 
     .counters {
         grid-area: counters;
@@ -69,7 +88,7 @@ main.home {
                 user-select: none;
                 cursor: pointer;
                 padding: 1em;
-                flex: 0 0 40%;
+                flex: 0 0 calc(50% - 2em);
 
                 transition: cubic-bezier(0.075, 0.82, 0.165, 1) .4s;
 
@@ -106,6 +125,8 @@ main.home {
     .lobby {
         display: flex;
         flex-flow: column;
+
+        height: 60vh;
 
         h2 {
             font-weight: normal;

@@ -4,7 +4,7 @@ import { Board_encode, Castles_encode, GameId, GameStatus, millis_for_clock, Per
 import { Board, Color, DuckChess } from 'duckops'
 
 import Database from 'better-sqlite3'
-import { default_Glicko_Rating, Glicko_Rating } from "./glicko"
+import { default_Glicko_Rating, Glicko_Rating, provisional } from "./glicko"
 import { getUser } from "./session"
 
 
@@ -61,6 +61,7 @@ export type DbGamePlayer = {
   user_id: UserId,
   is_winner: number,
   color: Color,
+  provisional: number,
   rating: number,
   ratingDiff: number | null
 }
@@ -140,11 +141,12 @@ export const create_session = (): Session => {
   }
 }
 
-const create_game_player = (user_id: UserId, color: Color, rating: number) => {
+const create_game_player = (user_id: UserId, color: Color, rating: number, provisional: boolean): DbGamePlayer => {
   return {
     id: gen_id(),
     user_id,
     color,
+    provisional: provisional ? 1 : 0,
     rating,
     ratingDiff: null,
     is_winner: 0
@@ -152,16 +154,16 @@ const create_game_player = (user_id: UserId, color: Color, rating: number) => {
 }
 
 
-export const create_and_new_game = async (white: UserId, black: UserId, white_rating: number, black_rating: number, clock: TimeControl): Promise<DbGame> => {
+export const create_and_new_game = async (white: UserId, black: UserId, white_rating: Glicko_Rating, black_rating: Glicko_Rating, clock: TimeControl): Promise<DbGame> => {
   let res = create_game(white, black, white_rating, black_rating, clock)
   await new_game(res)
   return res[2]
 }
 
-const create_game = (white: UserId, black: UserId, white_rating: number, black_rating: number, clock: TimeControl): [DbGamePlayer, DbGamePlayer, DbGame] => {
+const create_game = (white: UserId, black: UserId, white_rating: Glicko_Rating, black_rating: Glicko_Rating, clock: TimeControl): [DbGamePlayer, DbGamePlayer, DbGame] => {
   let d = DuckChess.default()
-  let w_player = create_game_player(white, 'white', white_rating)
-  let b_player = create_game_player(black, 'black', black_rating)
+  let w_player = create_game_player(white, 'white', white_rating.rating, provisional(white_rating))
+  let b_player = create_game_player(black, 'black', black_rating.rating, provisional(black_rating))
 
   let game = {
     id: gen_id() + gen_id().slice(0, 4),
@@ -265,6 +267,7 @@ async function create_databases() {
   ("id" TEXT PRIMARY KEY, 
   "user_id" TEXT, 
   "color" TEXT,
+  "provisional" NUMBER,
   "rating" NUMBER, 
   "ratingDiff" NUMBER,
   "is_winner" NUMBER,
@@ -327,7 +330,7 @@ export async function update_session(u: { id: SessionId, user_id: UserId }) {
 export async function new_game(gamep: [DbGamePlayer, DbGamePlayer, DbGame]) {
   let [w_player, b_player, game] = gamep
 
-    let ss = db.prepare(`INSERT INTO game_players VALUES (@id, @user_id, @color, @rating, @ratingDiff, @is_winner)`)
+    let ss = db.prepare(`INSERT INTO game_players VALUES (@id, @user_id, @color, @provisional, @rating, @ratingDiff, @is_winner)`)
       
   await ss.run(w_player)
   await ss.run(b_player)
@@ -371,7 +374,7 @@ export async function update_game_rating_diffs(ids: [GamePlayerId, GamePlayerId]
 }
 
 async function update_game_player_rating_diff(id: GamePlayerId, diff: number) {
-  await db.prepare(`UPDATE game_players SET ratingDiff = ? WHERE game_players.id = ?`).run(id, diff)
+  await db.prepare(`UPDATE game_players SET ratingDiff = ? WHERE game_players.id = ?`).run(diff, id)
 }
 
 export async function make_game_move(u: DbGameMoveUpdate) {

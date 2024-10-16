@@ -31,13 +31,35 @@ a {
 
 main {
   text-align: center;
-  padding: 0 1em;
   margin: 0 auto;
+  width: 100%;
 }
 
 body {
   background: $background;
   color: $text;
+}
+
+#app {
+
+  --main-margin: 30px;
+  --site-header-height: 50px;
+
+  display: grid;
+  grid-template-areas: 'top top top top top'
+  '. . main . .';
+
+  grid-template-columns: var(--main-margin) 1fr minmax(auto, var(--main-max-width)) 1fr var(--main-margin);
+  grid-template-rows: var(--site-header-height) 1fr;
+
+  nav {
+    grid-area: top;
+  }
+
+
+  main {
+    grid-area: main;
+  }
 }
 
 

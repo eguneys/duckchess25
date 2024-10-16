@@ -118,7 +118,7 @@ const Lobby = (props: { me?: string }) => {
         <For each={hooks()}>{hook =>
           <tr onClick={() => join_hook(hook.id)} class={
             (removed_hooks().includes(hook.id) ? ' removed': '') + 
-            (hook.u === props.me ? ' me': '')}><td>{hook.u}</td><td>{hook.rating}</td><td>{clock_long[hook.clock]}</td></tr>
+            (hook.u === props.me ? ' me': '')}><td>{hook.u}</td><td>{hook.rating}{hook.provisional? '?' : ''}</td><td>{clock_long[hook.clock]}</td></tr>
         }</For>
       </tbody>
     </table>

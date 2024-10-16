@@ -1,7 +1,17 @@
 @import '~/_variables';
 
+body {
+    --main-margin: 1vw;
+}
+
+#app {
+    --main-max-width: auto;
+}
 
 main.round {
+
+
+    margin-bottom: 1em;
     display: grid;
 
     grid-template-areas: 'board .'
@@ -15,6 +25,7 @@ main.round {
 
     grid-template-columns: $col-uniboard-width minmax(300px, 400px);
     grid-template-rows: auto;
+
 
     .board {
         grid-area: board;
@@ -116,6 +127,21 @@ main.round {
         .username {
             text-align: left;
             flex: 1;
+        }
+
+
+        .diff {
+            margin-left: 0.2em;
+
+
+            &.good {
+                color: $c-good;
+            }
+
+            &.bad {
+
+                color: $c-bad;
+            }
         }
     }
 
@@ -231,4 +257,31 @@ main.round {
                     color: $text-light;
                 }
             }
+
+
+    @media (max-width: 799.29px) and (orientation: portrait) {
+
+        grid-template-areas:
+        'clock-top'
+        'user-top'
+        'board'
+        'user-bot'
+        'clock-bot'
+        'moves'
+        'controls';
+
+
+        grid-template-columns: none;
+        grid-template-rows: auto;
+
+        .table {
+           grid-area: 6 / 1 / 8 / 2;
+        }
+
+        .list {
+            max-height: 4em;
+        }
+    }
+
+
 }

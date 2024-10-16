@@ -1,5 +1,11 @@
 @import '~/_variables';
 
+#app {
+    --main-max-width: 1300px;
+}
+
+
+
 main.profile {
 
     display: flex;

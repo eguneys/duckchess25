@@ -77,17 +77,18 @@ const perfs_add_rating = (perfs: Perfs, gl: Glicko_Rating) => {
     }
 }
 
-async function perfs_save(game: Game, white: UserWithPerfs, black: UserWithPerfs) {
+async function perfs_save(game: Game, white: UserWithPerfs, black: UserWithPerfs): Promise<RatingDiffs> {
    if (!game_finished(game) || game.sans.length <= 2) {
-    return
+    return [0, 0]
    }
 
-
-   
     let perf_key = perf_key_of_clock(game.clock)
     const ratingOf = (perfs: UserPerfs) => perfs.perfs[perf_key].gl
     const mkPerfs = (def: UserPerfs, ratings: Glicko_Rating) => {
-        let res = { ...def }
+        let res: UserPerfs = {
+            id: def.id,
+            perfs: { ...def.perfs }
+        }
 
         res.perfs[perf_key] = perfs_add_rating(def.perfs[perf_key], ratings)
         return res
@@ -95,7 +96,7 @@ async function perfs_save(game: Game, white: UserWithPerfs, black: UserWithPerfs
 
    let [ratingsW, ratingsB] = [{...ratingOf(white.perfs)}, {...ratingOf(black.perfs)}]
    
-   updateRating(ratingsW, ratingsB, game)
+   ;[ratingsW, ratingsB] = updateRating(ratingsW, ratingsB, game)
 
    let ratingDiffs: RatingDiffs = [ratingsW.rating - ratingOf(white.perfs).rating, ratingsB.rating - ratingOf(black.perfs).rating]
 
@@ -103,6 +104,9 @@ async function perfs_save(game: Game, white: UserWithPerfs, black: UserWithPerfs
 
    await game_repo_set_rating_diffs(game_player_id_pair(game), ratingDiffs)
    await user_api_update_perfs({ white: [white.perfs, perfsW], black: [black.perfs, perfsB] }, perf_key)
+
+
+   return ratingDiffs
 }
 
 
@@ -126,7 +130,6 @@ async function finisher_other(prev: Game, status: GameStatus, winner?: Color) {
 
     let game = game_finish(prev, status, winner)
 
-    events.push({ t: 'endData', d: { status, winner, clock: { wclock, bclock } } })
 
     let pperfs = await user_api_pair_with_perfs(game_user_id_pair(game))
 
@@ -136,7 +139,9 @@ async function finisher_other(prev: Game, status: GameStatus, winner?: Color) {
 
     let [white, black] = pperfs
 
-    await perfs_save(game, white, black)
+    let ratingDiffs = await perfs_save(game, white, black)
+
+    events.push({ t: 'endData', d: { status, winner, clock: { wclock, bclock }, ratingDiff: { white: Math.floor(ratingDiffs[0]), black: Math.floor(ratingDiffs[1]) } } })
 
     return events
 }

@@ -1,3 +1,5 @@
+import { Glicko2, Player } from 'glicko2.ts'
+
 export type Glicko_Rating = {
     rating: number,
     deviation: number,
@@ -22,7 +24,18 @@ export const ratingOf = (rating: Glicko_Rating) => {
 }
 
 export const glicko2_GameResult = (winner: Glicko_Rating, loser: Glicko_Rating, isDraw: boolean): [Glicko_Rating, Glicko_Rating] => {
-    return [winner, loser]
+    let rating = new Glicko2()
+    let a = rating.makePlayer(winner.rating, winner.deviation, winner.volatility)
+    let b = rating.makePlayer(loser.rating, loser.deviation, loser.volatility)
+    rating.addResult(a, b, isDraw ? 0 : 1)
+
+    rating.calculatePlayersRatings()
+
+    const mkRating = (a: Player) => ({
+        rating: a.getRating(),
+        deviation: a.getRd(),
+        volatility: a.getVol()
+    })
+
+    return [mkRating(a), mkRating(b)]
 }
-
-

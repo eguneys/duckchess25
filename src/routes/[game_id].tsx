@@ -168,10 +168,12 @@ function PovView(props: { pov: PovWithFen, is_watcher?: true }) {
       set_w_clock(move.clock.wclock)
       set_b_clock(move.clock.bclock)
     },
-    endData(data: { status: GameStatus, winner?: Color, clock: { wclock: number, bclock: number }}) {
+    endData(data: { status: GameStatus, winner?: Color, clock: { wclock: number, bclock: number }, ratingDiff: { white: number, black: number }}) {
       set_game_end_reason(make_game_end_reason(data))
       set_w_clock(data.clock.wclock)
       set_b_clock(data.clock.bclock)
+      set_w_rating_diff(data.ratingDiff.white)
+      set_b_rating_diff(data.ratingDiff.black)
     }
   }
 
@@ -197,12 +199,21 @@ function PovView(props: { pov: PovWithFen, is_watcher?: true }) {
   const opponent = createMemo(() => pov().opponent)
   const [wclock, set_w_clock] = createSignal(game().wclock)
   const [bclock, set_b_clock] = createSignal(game().bclock)
+
+  const [w_rating_diff, set_w_rating_diff] = createSignal(game().players.white.ratingDiff)
+  const [b_rating_diff, set_b_rating_diff] = createSignal(game().players.black.ratingDiff)
+
   const player_clock = createMemo(() => player().color === 'white' ? wclock(): bclock())
   const opponent_clock = createMemo(() => opponent().color === 'white' ? wclock(): bclock())
+
+  const player_rating_diff = createMemo(() => player().color === 'white' ? w_rating_diff(): b_rating_diff())
+  const opponent_rating_diff = createMemo(() => opponent().color === 'white' ? w_rating_diff(): b_rating_diff())
+
   const [orientation, set_orientation] = createSignal(player().color)
   const steps = Steps.make(pov().game.sans)
   const selected_fen = createMemo(() => steps.selected_fen)
   const last_fen = createMemo(() => steps.last_fen)
+
 
   const [game_end_reason, set_game_end_reason] = createSignal(make_game_end_reason({ status: game().status, winner: winner()}))
   const clock_running_color = createMemo(() => !game_end_reason() ? fen_color(steps.last_fen) : undefined)
@@ -329,6 +340,8 @@ function PovView(props: { pov: PovWithFen, is_watcher?: true }) {
         opponent={opponent()}
         player_clock={player_clock()}
         opponent_clock={opponent_clock()}
+        player_rating_diff={player_rating_diff()}
+        opponent_rating_diff={opponent_rating_diff()}
         steps={steps.steps}
         set_selected_ply={set_selected_ply} selected_ply={selected_ply()} go_to_ply={go_to_ply} />
     </main>
@@ -344,17 +357,23 @@ function SideView(props: { do_takeback: () => void,
   opponent: Player, 
   player_clock: number,
   opponent_clock: number,
+  player_rating_diff?: number,
+  opponent_rating_diff?: number,
   clock_running_color?: Color,
   steps: Step[], 
   set_selected_ply: (_: number) => void, 
   selected_ply: number, 
   go_to_ply: (_: number) => void }) {
+
   const steps = createMemo(() => props.steps)
   const player = createMemo(() => props.player)
   const opponent = createMemo(() => props.opponent)
 
   const player_clock = createMemo(() => props.player_clock)
   const opponent_clock = createMemo(() => props.opponent_clock)
+
+  const player_rating_diff = createMemo(() => props.player_rating_diff)
+  const opponent_rating_diff = createMemo(() => props.opponent_rating_diff)
 
   let { crowd, cleanup } = useContext(SocketContext)!
 
@@ -373,7 +392,11 @@ function SideView(props: { do_takeback: () => void,
     <div class={'user-top user-link ' + (is_player_online() ? 'online' : 'offline')}>
       <i class='line'></i>
       <span class='username'>{opponent().username}</span>
-      <span class='rating'>{opponent().rating}</span>
+      <span class='rating'>{opponent().rating}{opponent().provisional? '?' : ''} 
+        <Show when={opponent_rating_diff()}>{diff => 
+          <span class={`diff ${diff() < 0 ? 'bad' : 'good'}`}>{diff() > 0 ? '+' :''}{diff()}</span>
+        }</Show>
+        </span>
     </div>
     <Moves {...props}/>
     <div class='rcontrols'>
@@ -385,7 +408,11 @@ function SideView(props: { do_takeback: () => void,
     <div class={'user-bot user-link ' + (is_opponent_online() ? 'online' : 'offline')}>
       <i class='line'></i>
       <span class='username'>{player().username}</span>
-      <span class='rating'>{player().rating}</span>
+      <span class='rating'>{player().rating}{player().provisional? '?' : ''}
+        <Show when={player_rating_diff()}>{diff => 
+          <span class={`diff ${diff() < 0 ? 'bad' : 'good'}`}>{diff() > 0 ? '+' :''}{diff()}</span>
+        }</Show>
+      </span>
     </div>
     <div class='rclock clock-top'>
       <Time time={opponent_clock()} is_running={is_opponent_clock_running()}/>

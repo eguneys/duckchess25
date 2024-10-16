@@ -3,6 +3,7 @@ import { getCookie, setCookie } from "vinxi/http";
 import { session_by_id, game_by_id, drop_user_by_id, new_user, User, user_by_id, DbGame, create_session, new_session, update_session, Session, user_by_username, GamePlayerId, game_player_by_id, DbGamePlayer, UserPerfs, get_perfs_by_user_id, get_count_by_user_id, get_perfs_by_username } from "./db";
 import { Board_decode, Castles_decode, Game, GameId, GameWithFen, LightPerf, millis_for_clock, PerfKey, Player, Pov, PovWithFen, SessionId, TimeControl, UserId, UserJsonView } from "./types";
 import { Board, ByColor, Color, DuckChess, makeFen, opposite } from "duckops";
+import { provisional } from "./glicko";
 
 export type UserSession = {
   user_id: string
@@ -194,8 +195,9 @@ export const getGamePlayer = async (id: GamePlayerId): Promise<Player | undefine
     id: p.id,
     user_id: p.user_id,
     username: u.username,
-    rating: p.rating,
-    ratingDiff: p.ratingDiff ?? undefined,
+    provisional: p.provisional === 1,
+    rating: Math.floor(p.rating),
+    ratingDiff: p.ratingDiff ? Math.floor(p.ratingDiff) : undefined,
     color: p.color,
     is_winner: p.is_winner === 1
   }
@@ -210,7 +212,7 @@ export const getLightPerf = async (user_id: UserId, key: PerfKey): Promise<Light
     return undefined
   }
 
-  let rating = perf.gl.rating
+  let rating = perf.gl
   let nb = perf.nb
   let progress = 0
 
