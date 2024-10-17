@@ -38,12 +38,12 @@ main {
 body {
   background: $background;
   color: $text;
+
+  --main-margin: 1vw;
+  --site-header-height: 50px;
 }
 
 #app {
-
-  --main-margin: 30px;
-  --site-header-height: 50px;
 
   display: grid;
   grid-template-areas: 'top top top top top'
@@ -57,7 +57,7 @@ body {
   }
 
 
-  main {
+  .main-wrap {
     grid-area: main;
   }
 }

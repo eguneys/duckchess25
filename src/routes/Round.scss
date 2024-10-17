@@ -5,7 +5,11 @@ body {
 }
 
 #app {
-    --main-max-width: auto;
+
+    @include mq-is-col1 {
+        --main-max-width: calc(100vh - calc(var(---site-header-height) + var(---site-header-margin)) + - 100px - 4em);
+    }
+
 }
 
 main.round {

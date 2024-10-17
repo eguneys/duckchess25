@@ -8,14 +8,10 @@
 
 main.profile {
 
-    display: flex;
-    justify-content: center;
-
     .section {
 
         background: $primary-dark3;
 
-        flex: 0 0 80%;
         display: flex;
         flex-flow: column;
 

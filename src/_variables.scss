@@ -26,6 +26,23 @@ $c-bad: #be3838;
 $site-header-height: 50px;
 $col-uniboard-width: calc(100vh - $site-header-height - 10px);
 
+$topnav-visible: 1020px;
+
+$xxx-small: 400px;
+$xx-small: 500px;
+$x-small: 650px;
+$small: 800px;
+$medium: 980px;
+$large: 1120px;
+$x-large: 1260px;
+$xx-large: 1500px;
+
+$x-short: 400px;
+$short: 500px;
+$tall: 600px;
+$x-tall: 700px;
+
+
 @font-face {
   font-family: 'Noto Chess';
   font-display: block;
@@ -51,3 +68,55 @@ $col-uniboard-width: calc(100vh - $site-header-height - 10px);
   font-family: 'Noto Chess', 'Noto Sans';
 }
 
+@mixin mq-is-col1 {
+  @media (max-width: at-most($small)) and (orientation: portrait) {
+    @content;
+  }
+}
+
+
+@mixin mq-at-least-col2 {
+  @media (min-width: at-least($small)), (orientation: landscape) {
+    @content;
+  }
+}
+
+
+@mixin mq-is-col2-squeeze {
+  @media (max-width: at-most($small)) and (orientation: landscape) {
+    @content;
+  }
+}
+
+@mixin mq-at-least-col3 {
+  @media (min-width: at-least($x-large)) {
+    @content;
+  }
+}
+
+
+@mixin mq-site-header-tall {
+  @media (min-height: at-least($tall)) {
+    @content;
+  }
+}
+
+
+@mixin mq-topnav-hidden {
+  @media (max-width: at-most($topnav-visible)) {
+    @content;
+  }
+}
+
+
+@mixin mq-topnav-visible-and-tall {
+  @media (min-width: at-least($topnav-visible)) and (min-height: at-least($tall)) {
+    @content;
+  }
+}
+
+@mixin mq-board-resizable {
+  @media (min-width: at-least($small)) {
+    @content;
+  }
+}

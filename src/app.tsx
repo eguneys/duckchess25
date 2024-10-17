@@ -18,7 +18,7 @@ export default function App() {
           <SocketProvider>
             <Title>SolidStart - Basic</Title>
             <Nav />
-            <Suspense>{props.children}</Suspense>
+            <Suspense><div class='main-wrap'>{props.children}</div></Suspense>
             <SocketStatus/>
           </SocketProvider>
         </MetaProvider>

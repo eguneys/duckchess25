@@ -244,7 +244,7 @@ async function play_uci(pov: Pov, uci: string) {
 
 
     if (status !== GameStatus.Started) {
-        events.push({ t: 'endData', d: { status, winner, clock: {wclock, bclock } } })
+        events.push(...(await finisher_other(pov.game, status, winner ?? undefined)))
     }
 
 
