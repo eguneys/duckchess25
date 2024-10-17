@@ -126,7 +126,7 @@ main.home {
         display: flex;
         flex-flow: column;
 
-        height: 60vh;
+        max-height: 60vh;
 
         h2 {
             font-weight: normal;

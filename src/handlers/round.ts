@@ -118,6 +118,9 @@ async function finisher_out_of_time(game: Game) {
 async function finisher_other(prev: Game, status: GameStatus, winner?: Color) {
     let events = []
 
+
+    let game = game_finish(prev, status, winner)
+
     let { wclock, bclock } = prev
 
     await make_game_end({
@@ -127,9 +130,6 @@ async function finisher_other(prev: Game, status: GameStatus, winner?: Color) {
         bclock,
         winner: winner ? prev.players[winner].id : null
     })
-
-    let game = game_finish(prev, status, winner)
-
 
     let pperfs = await user_api_pair_with_perfs(game_user_id_pair(game))
 
