@@ -20,6 +20,8 @@ main.home {
     column-gap: 1em;
     row-gap: 1em;
 
+    margin-bottom: 3em;
+
     @media (min-width: 799.3px) {
         grid-template-areas: 'counters lobby'
             'create lobby'
@@ -71,7 +73,7 @@ main.home {
 
     .create {
         border: 1px solid $accent;
-        border-radius: 2px;
+        border-radius: 4px;
         padding: 1em;
 
         h2 {
@@ -82,14 +84,21 @@ main.home {
         .time-control {
             display: flex;
             flex-flow: row wrap;
+            justify-content: center;
+            gap: 0.3em;
 
             span {
-                font-size: 1.4em;
+                font-size: 1.8em;
                 user-select: none;
                 cursor: pointer;
                 padding: 1em;
-                flex: 0 0 calc(50% - 2em);
+                flex: 0 0 calc(50% - 2em - 0.2em - 16px);
 
+                background: $primary-dark;
+                color: $text-light;
+                border-radius: 6px;
+                border: 3px solid $accent-light;
+                margin: 0.1em;
                 transition: cubic-bezier(0.075, 0.82, 0.165, 1) .4s;
 
                 &:hover {
@@ -133,6 +142,7 @@ main.home {
             color: $accent;
             border: 1px solid $accent;
             border-bottom: none;
+            border-radius: 4px 4px 0 0px;
         }
 
         .hooks {
@@ -178,6 +188,73 @@ main.home {
                     td {
                         padding: 0.4em;
                         border-bottom: 1px solid $text;
+                    }
+                }
+            }
+        }
+    }
+
+
+    .leaderboard {
+
+
+        display: flex;
+        flex-flow: column;
+        justify-content: center;
+
+        border: 1px solid $primary-dark3;
+        padding: 0.4em;
+        border-radius: 4px;
+
+        h2 {
+            color: $primary-dark2;
+        }
+
+        .perfs {
+            display: flex;
+            justify-content: center;
+            gap: 0.2em;
+
+            @include mq-is-col1 {
+                flex-flow: column;
+            }
+
+
+            .perf {
+                display: flex;
+                flex-flow: column;
+
+                background: $primary-dark3;
+                border: 1px solid $accent-light;
+                border-radius: 3px;
+                padding: 0.4em 0.8em;
+
+                h3 {
+                    text-transform: capitalize;
+                    color: $primary-light;
+                }
+
+                .list {
+                    display: flex;
+                    flex-flow: column;
+                    gap: 0.2em;
+
+
+                    .leader {
+                        display: flex;
+                        justify-content: space-between;
+
+                        .rating {
+                            color: $accent;
+                        }
+
+                        .user-link {
+                            max-width: 180px;
+                            color: $text-light;
+                            text-overflow: ellipsis;
+                            white-space: nowrap;
+                            overflow: hidden;
+                        }
                     }
                 }
             }

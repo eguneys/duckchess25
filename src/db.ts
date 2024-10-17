@@ -1,4 +1,3 @@
-"use server"
 import { generate_username } from "./gen"
 import { Board_encode, Castles_encode, GameId, GameStatus, millis_for_clock, PerfKey, PerfKeys, SessionId, TimeControl, UserId } from './types'
 import { Board, Color, DuckChess } from 'duckops'
@@ -46,6 +45,12 @@ export type Perfs = {
 }
 
 export type UserPerfs = { id: DbUserPerfsId, perfs: Record<PerfKey, Perfs> }
+
+export type LightGlicko = DbGlicko & {
+  user_id: UserId,
+  username: string,
+  nb: number
+}
 
 type DbCountId = string
 export type DbCount = {
@@ -121,6 +126,7 @@ export type User = {
   is_dropped: number | null,
   count: DbCountId,
   perfs: DbUserPerfsId,
+  is_ai: number,
 }
 
 export type Session = {
@@ -203,9 +209,32 @@ const create_user = async (count: DbCountId, perfs: DbUserPerfsId): Promise<User
     lichess_token: null,
     is_dropped: null,
     count,
-    perfs
+    perfs,
+    is_ai: 0,
   }
 }
+
+const create_ai = (count: DbCountId, perfs: DbUserPerfsId): User => {
+  let username = `Fairy-Stockfish`
+
+  if (user_by_username(username) !== undefined) {
+    username = username + '-' + gen_id().slice(0, 2)
+  }
+
+  return {
+    id: gen_id(),
+    created_at: Date.now(),
+    seen_at: Date.now(),
+    username,
+    lichess_token: null,
+    is_dropped: null,
+    count,
+    perfs,
+    is_ai: 1
+  }
+}
+
+
 
 async function create_databases() {
 
@@ -258,6 +287,7 @@ async function create_databases() {
   "is_dropped" NUMBER,
   "count" TEXT,
   "perfs" TEXT,
+  "is_ai" NUMBER,
   FOREIGN KEY (count) REFERENCES counts(id),
   FOREIGN KEY (perfs) REFERENCES user_perfs(id)
   )`
@@ -308,9 +338,24 @@ async function create_databases() {
   db.prepare(create_games).run()
 
   console.log('tables created')
+
+
+  let ais = await ai_all()
+  if (ais.length === 0) {
+    await Promise.all([
+      new_ai(),
+      new_ai(),
+      new_ai(),
+      new_ai(),
+      new_ai(),
+      new_ai(),
+      new_ai(),
+      new_ai(),
+    ])
+    console.log('ais inserted')
+  }
 }
 
-create_databases()
 
 
 export async function new_session(session: Session) {
@@ -398,6 +443,27 @@ export async function make_game_move(u: DbGameMoveUpdate) {
   }
 }
 
+export async function new_ai(): Promise<User> {
+  let count = create_count()
+  let perfs = create_user_perfs()
+
+  let user = await create_ai(count.id, perfs[0].id)
+
+  await new_count(count)
+  await new_user_perfs(perfs)
+
+  await db.prepare(`INSERT INTO users VALUES 
+      (@id, @created_at, @seen_at, 
+      @username, @lichess_token, @is_dropped,
+      @count,
+      @perfs,
+      @is_ai
+      )`).run(user)
+
+  return user
+}
+
+
 
 export async function new_user(): Promise<User> {
   let count = create_count()
@@ -412,10 +478,16 @@ export async function new_user(): Promise<User> {
       (@id, @created_at, @seen_at, 
       @username, @lichess_token, @is_dropped,
       @count,
-      @perfs
+      @perfs,
+      @is_ai
       )`).run(user)
 
   return user
+}
+
+export async function ai_all() {
+    let rows = db.prepare<[], User>(`SELECT * from users WHERE is_ai = 1`).all()
+    return rows
 }
 
 export async function user_by_id(user_id: UserId) {
@@ -437,6 +509,27 @@ export async function dropped_users_in_last_minute() {
   return await db.prepare<number, { id: UserId }>(`SELECT id from users WHERE is_dropped >= ?`).all(Date.now() - 1000 * 60)
 }
 
+export async function get_leaders_for_perf_key(key: PerfKey): Promise<LightGlicko[]> {
+  return await db.prepare<[], LightGlicko>(`
+    SELECT glickos.*, users.username, users.id as user_id, perfs.nb from perfs
+    INNER JOIN user_perfs ON user_perfs.${key} = perfs.id
+    INNER JOIN users ON users.perfs = user_perfs.id
+    INNER JOIN glickos ON glickos.id = perfs.gl
+    ORDER BY glickos.r DESC
+    LIMIT 13
+`).all()
+}
+
+
+export async function get_light_glicko(user_id: UserId, key: PerfKey): Promise<LightGlicko | undefined> {
+  return await db.prepare<UserId, LightGlicko>(`
+    SELECT glickos.*, users.username, users.id as user_id, perfs.nb from perfs
+    INNER JOIN user_perfs ON user_perfs.${key} = perfs.id
+    INNER JOIN users ON users.perfs = user_perfs.id
+    INNER JOIN glickos ON glickos.id = perfs.gl
+    WHERE users.id = ?
+    `).get(user_id)
+}
 
 export async function get_perfs_of_user_by_key(user_id: UserId, key: PerfKey) {
 
@@ -537,8 +630,9 @@ export async function get_perfs_by_username(username: string): Promise<UserPerfs
   return await get_perfs_by_user_id(user.id)
 }
 
-export async function get_perfs_by_user_id(user_id: UserId): Promise<UserPerfs | undefined> {
-  let user_perfs = await db.prepare<UserId, DbUserPerfs>(`SELECT user_perfs.* FROM user_perfs 
+export async function get_perfs_by_user_id(user_id: UserId): Promise<UserPerfs & { username: string } | undefined> {
+  let user_perfs = await db.prepare<UserId, DbUserPerfs & { username: string }>(`
+    SELECT user_perfs.*, users.username FROM user_perfs 
     INNER JOIN users ON users.perfs = user_perfs.id
     WHERE users.id = ?`).get(user_id)
 
@@ -556,6 +650,7 @@ export async function get_perfs_by_user_id(user_id: UserId): Promise<UserPerfs |
 
   return {
     id: user_perfs.id,
+    username: user_perfs.username,
     perfs: {
       blitz,
       rapid,
@@ -633,3 +728,7 @@ const new_user_perfs = async (perfs: [DbUserPerfs, [DbGlicko, DbPerfs][]]) => {
 const new_count = async(count: DbCount) => {
   await db.prepare(`INSERT INTO counts VALUES (@id, @draw, @win, @loss, @game)`).run(count)
 }
+
+
+
+create_databases()

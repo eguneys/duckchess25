@@ -93,6 +93,12 @@ export class RoomCrowds {
         return [...this._rooms.values()].some(_ => _.is_user_online(id))
     }
 
+    is_users_online(ids: UserId[]) {
+        return ids.map(id => ({ [id]: this.is_user_online(id) }))
+    }
+
+
+
     is_user_in_room(room: string, id: UserId) {
         let res = this._rooms.get(room)
 

@@ -14,11 +14,5 @@ export class Site extends Dispatch {
 
     async _message(_: Message) {
 
-        switch (_.t) {
-            case 'is_online': 
-            let d = RoomCrowds.Instance.is_user_online(_.d)
-            this.publish_peer({t: 'is_online', d})
-            break
-        }
     }
 }

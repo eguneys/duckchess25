@@ -1,7 +1,7 @@
 "use server"
-import { getCookie, setCookie } from "vinxi/http";
-import { session_by_id, game_by_id, drop_user_by_id, new_user, User, user_by_id, DbGame, create_session, new_session, update_session, Session, user_by_username, GamePlayerId, game_player_by_id, DbGamePlayer, UserPerfs, get_perfs_by_user_id, get_count_by_user_id, get_perfs_by_username } from "./db";
-import { Board_decode, Castles_decode, Game, GameId, GameWithFen, LightPerf, millis_for_clock, PerfKey, Player, Pov, PovWithFen, SessionId, TimeControl, UserId, UserJsonView } from "./types";
+import { getCookie, getValidatedRouterParams, setCookie } from "vinxi/http";
+import { session_by_id, game_by_id, drop_user_by_id, new_user, User, user_by_id, DbGame, create_session, new_session, update_session, Session, user_by_username, GamePlayerId, game_player_by_id, DbGamePlayer, UserPerfs,  get_count_by_user_id, get_perfs_by_username, get_leaders_for_perf_key, get_perfs_by_user_id, Perfs, LightGlicko, get_light_glicko } from "./db";
+import { Board_decode, Castles_decode, Game, GameId, GameWithFen, Leaderboard, Leaders, LightPerf, millis_for_clock, PerfKey, PerfKeys, Player, Pov, PovWithFen, SessionId, TimeControl, UserId, UserJsonView } from "./types";
 import { Board, ByColor, Color, DuckChess, makeFen, opposite } from "duckops";
 import { provisional } from "./glicko";
 
@@ -204,26 +204,40 @@ export const getGamePlayer = async (id: GamePlayerId): Promise<Player | undefine
 }
 
 export const getLightPerf = async (user_id: UserId, key: PerfKey): Promise<LightPerf | undefined> => {
-  let perfs = await get_perfs_by_user_id(user_id)
-
-  let perf = perfs?.perfs[key]
-
-  if (!perf) {
+  let res = await get_light_glicko(user_id, key)
+  if (!res) {
     return undefined
   }
+  return lightPerfForLightGlicko(res)
+}
 
-  let rating = perf.gl
-  let nb = perf.nb
-  let progress = 0
+export const getLeaderboard = async (): Promise<Leaderboard> => {
+  let res: Leaderboard = {}
+  await Promise.all(PerfKeys.map(key => getLeaders(key)
+  .then(_ => res[key] = _)))
+
+  return res
+}
+
+const lightPerfForLightGlicko = (_: LightGlicko): LightPerf => {
+
+  let { user_id, username, r, d, v, nb } = _
+
+  let rating = { rating: r, deviation: d, volatility: v }
 
   return {
     user_id,
+    username,
     rating,
+    provisional: provisional(rating),
     nb,
-    progress
+    progress: 0
   }
 }
 
+export const getLeaders = async (key: PerfKey): Promise<Leaders> => {
+  return (await get_leaders_for_perf_key(key)).map(lightPerfForLightGlicko)
+}
 
 export const getLightPerfByUsername = async (username: string, key: PerfKey): Promise<LightPerf | undefined> => {
   let u = await user_by_username(username)

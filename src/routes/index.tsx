@@ -1,14 +1,16 @@
 import { Title } from "@solidjs/meta";
-import { createSignal, For, onCleanup, onMount, useContext } from "solid-js";
+import { createEffect, createSignal, For, on, onCleanup, onMount, Show, useContext } from "solid-js";
 import { SocketContext, SocketProvider } from "~/components/socket";
 
 import "~/app.scss";
 import './Home.scss'
 import { Hook } from "~/handlers/lobby";
-import { createAsync, redirect, useNavigate } from "@solidjs/router";
+import { A, createAsync, redirect, useNavigate } from "@solidjs/router";
 import { User } from "../db";
-import { TimeControl } from "~/types";
-import { getUser } from '~/components/cached'
+import { Leaderboard, PerfKeys, TimeControl, UserId } from "~/types";
+import { getLeaderboard, getUser } from '~/components/cached'
+import { getRequestProtocol } from "vinxi/http";
+import { display_Glicko } from "~/glicko";
 
 export default function Home() {
 
@@ -50,7 +52,7 @@ export default function Home() {
       <Lobby me={user()?.username}/>
       <Create onCreate={(clock) => on_create(clock)}/>
       <Featured/>
-      <Leaderboard/>
+      <LeaderboardView/>
     </main>
   );
 }
@@ -102,7 +104,9 @@ const Lobby = (props: { me?: string }) => {
       set_hooks(h)
     }
   }
-  receive(handlers)
+  onMount(() => {
+     receive(handlers)
+  })
   onCleanup(() => {
     cleanup(handlers)
   })
@@ -140,12 +144,81 @@ const Create = (props: { onCreate: (time_control: TimeControl) => void }) => {
 
 const Featured = () => {
   return (<div class='featured'>
-    Featured Active Game
+    <h2>Featured Active Game</h2>
   </div>)
 }
 
-const Leaderboard = () => {
+const LeaderboardView = () => {
+
+  let { send, receive, cleanup } = useContext(SocketContext)!
+
+
+  const leaderboard = createAsync(() => getLeaderboard())
+
+  const [is_onlines, set_is_onlines] = createSignal<{ [key in string]: boolean }[]>([])
+
+  const is_online = (user_id: UserId) => {
+    return is_onlines().some(_ => _[user_id])
+  }
+
+  let handlers = {
+    is_online(ids: {[key in string]: boolean }[]) {
+      set_is_onlines(ids)
+    }
+  }
+  onMount(() => {
+     receive(handlers)
+  })
+  onCleanup(() => {
+    cleanup(handlers)
+  })
+
+
+  createEffect(on(leaderboard, (l: Leaderboard | undefined) => {
+    if (l) {
+      query_is_onlines(l)
+    }
+  }))
+
+  onMount(() => {
+    let l = leaderboard()
+
+    if (l) {
+      query_is_onlines(l)
+    }
+  })
+
+  function query_is_onlines(l: Leaderboard) {
+    let ids: UserId[] = []
+    if (l) {
+      for (let key of PerfKeys) {
+        ids.push(...l[key].map(_ => _.user_id))
+      }
+    }
+
+    send({t: 'is_onlines', ids: Array.from(new Set(ids)) })
+  }
+
   return (<div class='leaderboard'>
-    Leaderboard
+    <h2>Leaderboard</h2>
+    <div class='perfs'>
+      <For each={PerfKeys}>{key =>
+        <div class='perf'>
+          <h3>{key}</h3>
+          <div class='list'>
+            <Show when={leaderboard()}>{leaderboard =>
+              < For each={leaderboard()[key]}>{leader =>
+                <A class='leader' href={`/u/${leader.username}`}>
+                  <span class={'user-link ' + (is_online(leader.user_id) ? 'online' : 'offline')}>
+                    <i class='line'></i>
+                    {leader.username}</span>
+                    <span class='rating'>{display_Glicko(leader.rating)}</span>
+                </A>
+              }</For>
+            }</Show>
+          </div>
+          </div>
+        }</For>
+    </div>
   </div>)
 }

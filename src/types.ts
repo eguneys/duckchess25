@@ -15,6 +15,12 @@ export type ProfileId = string
 export const PerfKeys = ["blitz", "rapid", "classical"]
 export type PerfKey = typeof PerfKeys[number]
 
+
+export type Leaderboard = Record<PerfKey, Leaders>
+
+export type Leaders = LightPerf[]
+
+
 export type UserWithPerfs = {
   user: User,
   perfs: UserPerfs
@@ -22,7 +28,9 @@ export type UserWithPerfs = {
 
 export type LightPerf = {
   user_id: UserId,
+  username: string,
   rating: Glicko_Rating,
+  provisional: boolean,
   nb: number,
   progress: number
 }

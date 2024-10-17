@@ -45,7 +45,9 @@ export default function Home() {
         }
     }
 
-    receive(handlers)
+    onMount(() => {
+       receive(handlers)
+    })
     onCleanup(() => {
         cleanup(handlers)
     })

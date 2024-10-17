@@ -76,6 +76,22 @@ export abstract class Dispatch implements IDispatch {
     }
 
     async message(message: Message) {
+
+        switch (message.t) {
+            case 'is_online': {
+                let d = RoomCrowds.Instance.is_user_online(message.d)
+                this.publish_peer({ t: 'is_online', d })
+                return
+            }
+            break
+            case 'is_onlines':  {
+                let d = RoomCrowds.Instance.is_users_online(message.ids.slice(0, 40))
+                this.publish_peer({ t: 'is_online', d })
+                return
+            }
+            break
+        }
+
         await this._message(message)
     }
 

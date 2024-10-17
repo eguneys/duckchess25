@@ -177,7 +177,9 @@ function PovView(props: { pov: PovWithFen, is_watcher?: true }) {
     }
   }
 
-  receive(handlers)
+  onMount(() => {
+    receive(handlers)
+  })
   onCleanup(() => {
     cleanup(handlers)
   })
