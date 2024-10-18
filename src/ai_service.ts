@@ -7,7 +7,6 @@ export const ai_status = async () => {
 export const ai_uci = async (fen: string)  => {
     let { uci } = await fetch(url + `/${encodeURIComponent(fen.replace('d', '*'))}`).then(_ => _.json())
 
-    console.log(uci)
     let [move, duck] = uci.split(',')
 
     return `${duck.slice(2)}@${move}`

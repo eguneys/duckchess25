@@ -16,8 +16,28 @@ import { user_api_pair_with_perfs } from "~/user_api";
 export default function Home() {
 
   let { page, send, receive, cleanup } = useContext(SocketContext)!
+
+  function query_is_onlines(l: Leaderboard) {
+    let ids: UserId[] = []
+    if (l) {
+      for (let key of PerfKeys) {
+        ids.push(...l[key].map(_ => _.user_id))
+      }
+    }
+
+    send({t: 'is_onlines', ids: Array.from(new Set(ids)) })
+  }
+
+
+
+  const leaderboard = createAsync(() => getLeaderboard())
   onMount(() => {
     page('lobby')
+    let l = leaderboard()
+
+    if (l) {
+      query_is_onlines(l)
+    }
   })
 
   const user = createAsync<User>(() => getUser(), { deferStream: true })
@@ -228,26 +248,6 @@ const LeaderboardView = () => {
     }
   }))
     */
-
-  onMount(() => {
-    let l = leaderboard()
-
-    if (l) {
-      query_is_onlines(l)
-    }
-  })
-
-  function query_is_onlines(l: Leaderboard) {
-    let ids: UserId[] = []
-    if (l) {
-      for (let key of PerfKeys) {
-        ids.push(...l[key].map(_ => _.user_id))
-      }
-    }
-
-    send({t: 'is_onlines', ids: Array.from(new Set(ids)) })
-  }
-
   return (<div class='leaderboard'>
     <h2>Leaderboard</h2>
     <div class='perfs'>

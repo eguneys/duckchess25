@@ -101,9 +101,6 @@ async function perfs_save(game: Game, white: UserWithPerfs, black: UserWithPerfs
 
    let ratingDiffs: RatingDiffs = [ratingsW.rating - ratingOf(white.perfs).rating, ratingsB.rating - ratingOf(black.perfs).rating]
 
-   console.log(ratingsW.rating, ratingDiffs[0])
-   console.log(ratingsB.rating, ratingDiffs[1])
-
    let [perfsW, perfsB] = [mkPerfs(white.perfs, ratingsW), mkPerfs(black.perfs, ratingsB)]
 
    await game_repo_set_rating_diffs(game_player_id_pair(game), ratingDiffs)
@@ -151,8 +148,6 @@ async function finisher_other(prev: Game, status: GameStatus, winner?: Color): P
 
 async function play_by_ai(pov: Pov, uci: string) {
     let history = history_step_builder(pov.game.sans)
-    console.log(uci)
-
     return apply_uci(pov.game, uci, history)
 }
 
