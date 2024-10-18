@@ -21,7 +21,11 @@ export const updateRating = (white: Glicko_Rating, black: Glicko_Rating, game: G
     switch (game_winner(game)) {
         case undefined: return glicko2_GameResult(white, black, true)
         case "white": return glicko2_GameResult(white, black, false)
-        case "black": return glicko2_GameResult(black, white, false)
+        case "black": {
+            let res = glicko2_GameResult(black, white, false)
+            res.reverse()
+            return res
+        }
     }
     throw ""
 }

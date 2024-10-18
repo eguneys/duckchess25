@@ -101,6 +101,9 @@ async function perfs_save(game: Game, white: UserWithPerfs, black: UserWithPerfs
 
    let ratingDiffs: RatingDiffs = [ratingsW.rating - ratingOf(white.perfs).rating, ratingsB.rating - ratingOf(black.perfs).rating]
 
+   console.log(ratingsW.rating, ratingDiffs[0])
+   console.log(ratingsB.rating, ratingDiffs[1])
+
    let [perfsW, perfsB] = [mkPerfs(white.perfs, ratingsW), mkPerfs(black.perfs, ratingsB)]
 
    await game_repo_set_rating_diffs(game_player_id_pair(game), ratingDiffs)
@@ -119,6 +122,7 @@ async function finisher_out_of_time(game: Game) {
 async function finisher_other(prev: Game, status: GameStatus, winner?: Color) {
     let events = []
 
+    console.log('resigned, winner is', winner)
 
     let game = game_finish(prev, status, winner)
 
@@ -147,15 +151,7 @@ async function finisher_other(prev: Game, status: GameStatus, winner?: Color) {
     return events
 }
 
-async function play_by_ai(pov: Pov) {
-    let uci
-
-    try {
-        uci = await ai_uci(makeFen(pov.game.duckchess.toSetup()))
-    } catch {
-        return finisher_other(pov.game, GameStatus.Resign, pov.player.color)
-    }
-
+async function play_by_ai(pov: Pov, uci: string) {
     let history = history_step_builder(pov.game.sans)
     console.log(uci)
 
@@ -361,14 +357,35 @@ export class Round extends Dispatch {
     }
 
     async try_ai_play() {
-        await this.handle(async pov => {
-            if (pov.game.duckchess.turn === pov.opponent.color && pov.opponent.is_ai) {
-                return await play_by_ai(pov)
-            }
-            return []
-        })
+
+        let uci: string | undefined
+
+        try {
+            uci = await this.with_pov(async pov => {
+                if (!pov) {
+                    return Promise.reject("Bad pov request " + this.user.username)
+                }
+
+                if (pov.game.duckchess.turn !== pov.opponent.color || !pov.opponent.is_ai) {
+                    return Promise.reject("Not ai's turn")
+                }
+
+                return await ai_uci(makeFen(pov.game.duckchess.toSetup()))
+            })
+        } catch {
+
+        }
 
 
+        if (uci) {
+            return await this.handle(async pov => {
+                if (game_playable_by(pov.game, pov.opponent.color)) {
+                    return await play_by_ai(pov, uci)
+                }
+                return []
+            })
+        }
+        return []
     }
 
     publish_events(events: any[]) {

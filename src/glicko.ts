@@ -37,5 +37,8 @@ export const glicko2_GameResult = (winner: Glicko_Rating, loser: Glicko_Rating, 
         volatility: a.getVol()
     })
 
+    console.log('winner', winner.rating, mkRating(a), isDraw)
+    console.log('loser', loser.rating, mkRating(b), isDraw)
+
     return [mkRating(a), mkRating(b)]
 }
