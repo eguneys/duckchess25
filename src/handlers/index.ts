@@ -33,7 +33,10 @@ export async function dispatch_peer(peer: Peer, data: string) {
         }
 
         sid = message.sid
+
+        peer.subscribe('sid-' + sid)
     }
+
 
     let session = await getSessionById(sid)
 
@@ -58,9 +61,10 @@ export async function dispatch_peer(peer: Peer, data: string) {
 
     if (!old_path || old_path !== path) {
         if (old_path) await dispatch_path(old_path, user, peer).leave()
+        peer.subscribe('sid-' + sid)
+
         if (path !== 'leave') {
             await dispatch_path(path, user, peer).join()
-            peer.subscribe('sid-' + sid)
         }
     }
 
