@@ -380,8 +380,8 @@ function SideView(props: { do_takeback: () => void,
   let { crowd, cleanup } = useContext(SocketContext)!
 
 
-  const is_player_online = createMemo(() => crowd().includes(player().user_id))
-  const is_opponent_online = createMemo(() => crowd().includes(opponent().user_id))
+  const is_player_online = createMemo(() => player().is_ai  || crowd().includes(player().user_id))
+  const is_opponent_online = createMemo(() => opponent().is_ai || crowd().includes(opponent().user_id))
 
   const is_player_clock_running = createMemo(() => player().color === props.clock_running_color)
   const is_opponent_clock_running = createMemo(() => opponent().color === props.clock_running_color)
@@ -391,7 +391,7 @@ function SideView(props: { do_takeback: () => void,
   return (<>
     <div class='table'></div>
 
-    <div class={'user-top user-link ' + (is_player_online() ? 'online' : 'offline')}>
+    <div class={'user-top user-link ' + (is_opponent_online() ? 'online' : 'offline')}>
       <i class='line'></i>
       <span class='username'>{opponent().username}</span>
       <span class='rating'>{opponent().rating}{opponent().provisional? '?' : ''} 
@@ -407,7 +407,7 @@ function SideView(props: { do_takeback: () => void,
         <button onClick={() => props.do_resign()} disabled={!props.can_resign} class='fbt resign'><span data-icon=""></span></button>
       </div>
     </div>
-    <div class={'user-bot user-link ' + (is_opponent_online() ? 'online' : 'offline')}>
+    <div class={'user-bot user-link ' + (is_player_online() ? 'online' : 'offline')}>
       <i class='line'></i>
       <span class='username'>{player().username}</span>
       <span class='rating'>{player().rating}{player().provisional? '?' : ''}

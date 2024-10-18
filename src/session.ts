@@ -199,7 +199,8 @@ export const getGamePlayer = async (id: GamePlayerId): Promise<Player | undefine
     rating: Math.floor(p.rating),
     ratingDiff: p.ratingDiff ? Math.floor(p.ratingDiff) : undefined,
     color: p.color,
-    is_winner: p.is_winner === 1
+    is_winner: p.is_winner === 1,
+    is_ai: u.is_ai === 1
   }
 }
 

@@ -1,6 +1,6 @@
 import { Peer, Dispatch, peer_send, Message } from "./dispatch";
-import { create_and_new_game, gen_id, new_game, User, user_by_username } from "../db";
-import { perf_key_of_clock, time_controls, TimeControl } from "../types";
+import { ai_all, create_and_new_game, gen_id, new_game, User, user_by_username } from "../db";
+import { perf_key_of_clock, time_controls, TimeControl, UserId } from "../types";
 import { getLightPerf, getLightPerfByUsername } from "../session";
 import { Glicko_Rating, provisional } from "../glicko";
 
@@ -43,6 +43,19 @@ export class Lobby extends Dispatch {
         let hooks = Lobby.hooks
 
         switch (msg.t) {
+            case 'hai': {
+
+                let clock = msg.d
+                if (time_controls.includes(msg.d)) {
+                    let ais = await ai_all()
+                    let ai = ais[Math.round(Math.random() * (ais.length - 1))]
+                    await this.start_new_game_against_user(ai.id, clock)
+
+
+                    // this.publish_peer({ t: 'hai_unavailable' })
+                }
+
+            } break
             case 'hadd': {
                 if (time_controls.includes(msg.d)) {
                     let clock = msg.d
@@ -82,26 +95,31 @@ export class Lobby extends Dispatch {
                         if (!hu) {
                             throw "No user for hook match"
                         }
-                        let perf_key = perf_key_of_clock(h.clock)
-                        let white = await getLightPerf(this.user.id, perf_key)
-                        let black = await getLightPerf(hu.id, perf_key)
 
-                        if (!white || !black) {
-                            throw "No Light Perf for hook match"
-                        }
-
-                        if (Math.random() < 0.5) {
-                            [white, black] = [black, white]
-                        }
-
-
-                        let game = await create_and_new_game(white.user_id, black.user_id, white.rating, black.rating, h.clock)
-
-                        this.publish_users({ t: 'game_redirect', d: game.id }, [white.user_id, black.user_id])
-
+                        await this.start_new_game_against_user(hu.id, h.clock)
                     }
                 }
             }
         }
+    }
+
+    start_new_game_against_user = async (opponent_id: UserId, clock: TimeControl) => {
+
+        let perf_key = perf_key_of_clock(clock)
+        let white = await getLightPerf(this.user.id, perf_key)
+        let black = await getLightPerf(opponent_id, perf_key)
+
+        if (!white || !black) {
+            throw "No Light Perf for hook match"
+        }
+
+        if (Math.random() < 0.5) {
+            [white, black] = [black, white]
+        }
+
+
+        let game = await create_and_new_game(white.user_id, black.user_id, white.rating, black.rating, clock)
+
+        this.publish_users({ t: 'game_redirect', d: game.id }, [white.user_id, black.user_id])
     }
 }

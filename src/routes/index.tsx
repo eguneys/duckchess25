@@ -11,6 +11,7 @@ import { Leaderboard, PerfKeys, TimeControl, UserId } from "~/types";
 import { getLeaderboard, getUser } from '~/components/cached'
 import { getRequestProtocol } from "vinxi/http";
 import { display_Glicko } from "~/glicko";
+import { user_api_pair_with_perfs } from "~/user_api";
 
 export default function Home() {
 
@@ -40,17 +41,12 @@ export default function Home() {
   })
 
 
-  const on_create = (time_control: TimeControl) => {
-    send({ t: 'hadd', d: time_control })
-  }
-  
-
   return (
     <main class='home'>
       <Title>duckchess.org - The Forever Free, adless, open source duck chess</Title>
       <Counters ng={ng()} />
       <Lobby me={user()?.username}/>
-      <Create onCreate={(clock) => on_create(clock)}/>
+      <Create/>
       <Featured/>
       <LeaderboardView/>
     </main>
@@ -77,7 +73,7 @@ const Lobby = (props: { me?: string }) => {
   const join_hook = (id: string) => {
     send({ t: 'hjoin', d: id })
   }
-  
+
   function clear_hooks() {
 
     let r = removed_hooks()
@@ -95,9 +91,9 @@ const Lobby = (props: { me?: string }) => {
       h.push(_)
       set_hooks(h)
     }, 
-    hrem(id: string[]) {
+    hrem(ids: string[]) {
       let h = removed_hooks()
-      h.push(...id)
+      h.push(...ids)
       set_removed_hooks(h)
     },
     hlist(h: Hook[]) {
@@ -130,27 +126,66 @@ const Lobby = (props: { me?: string }) => {
     </div>)
 }
 
-const Create = (props: { onCreate: (time_control: TimeControl) => void }) => {
+const Create = () => {
 
+  let { send, receive, cleanup } = useContext(SocketContext)!
+  let handlers = {
+    hai_unavailable() {
+      setTimeout(() => {
+        set_pending_ai(false)
+      }, 800)
+    }
+  }
+  onMount(() => {
+     receive(handlers)
+  })
+  onCleanup(() => {
+    cleanup(handlers)
+  })
+
+
+
+  const [pending_ai, set_pending_ai] = createSignal(false)
   const [tab, set_tab] = createSignal('play')
 
+  const onCreate = (time_control: TimeControl) => {
+    let is_ai = tab() === 'ai'
+
+    if (is_ai) {
+      set_pending_ai(true)
+      send({ t: 'hai', d: time_control })
+    } else {
+      send({ t: 'hadd', d: time_control })
+    }
+  }
+
   return (<div class='create'>
-  <div class='opponent'>
-      <h2>Opponent</h2>
-      <div class='buttons'>
-        <span onClick={() => set_tab('play')} class={tab() === 'play' ? 'active': ''}>Play Against Computer</span>
-        <span onClick={() => set_tab('ai')} class={tab() === 'ai' ? 'active': ''}>Create a new game</span>
-      </div>
-    </div>
-    <div class='content'>
-    <h2>Time Control</h2>
-      <div class='time-control'>
-        <span onClick={() => props.onCreate('threetwo')}>3+2</span>
-        <span onClick={() => props.onCreate('fivefour')}>5+4</span>
-        <span onClick={() => props.onCreate('tenzero')}>10+0</span>
-        <span onClick={() => props.onCreate('twentyzero')}>20+0</span>
-      </div>
-    </div>
+    <Show when={pending_ai()} fallback={
+      <>
+        <div class='opponent'>
+          <h2>Opponent</h2>
+          <div class='buttons'>
+            <span onClick={() => set_tab('ai')} class={tab() === 'ai' ? 'active' : ''}>Play Against Computer</span>
+            <span onClick={() => set_tab('play')} class={tab() === 'play' ? 'active' : ''}>Create a new game</span>
+          </div>
+        </div>
+        <div class='content'>
+          <h2>Time Control</h2>
+          <div class='time-control'>
+            <span onClick={() => onCreate('threetwo')}>3+2</span>
+            <span onClick={() => onCreate('fivefour')}>5+4</span>
+            <span onClick={() => onCreate('tenzero')}>10+0</span>
+            <span onClick={() => onCreate('twentyzero')}>20+0</span>
+          </div>
+        </div>
+      </>
+    }>
+      <>
+        <div class='pending-ai'>
+          <h3> Waiting Computer Pairing...</h3>
+        </div>
+      </>
+    </Show>
   </div>)
 }
 

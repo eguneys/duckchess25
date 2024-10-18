@@ -75,7 +75,8 @@ export type Player = {
   username: string,
   rating: number,
   ratingDiff?: number,
-  provisional: boolean
+  provisional: boolean,
+  is_ai: boolean
 }
 
 export type GameBase = {
