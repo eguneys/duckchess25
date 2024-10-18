@@ -25,7 +25,7 @@ export class Lobby extends Dispatch {
 
     constructor(user: User, peer: Peer) { super(user, 'lobby', peer) }
 
-    _leave() {
+    async _leave() {
         Lobby.nb_peers -= 1
         let r = Lobby.hooks.filter(_ => _.u === this.user.username)
         Lobby.hooks = Lobby.hooks.filter(_ => _.u !== this.user.username)
@@ -33,7 +33,7 @@ export class Lobby extends Dispatch {
     }
 
 
-    _join() {
+    async _join() {
         Lobby.nb_peers += 1
         peer_send(this.peer, {t: 'hlist', d: Lobby.hooks.slice(0, 20)})
     }

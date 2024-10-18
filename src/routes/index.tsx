@@ -221,11 +221,13 @@ const LeaderboardView = () => {
   })
 
 
+  /*
   createEffect(on(leaderboard, (l: Leaderboard | undefined) => {
     if (l) {
       query_is_onlines(l)
     }
   }))
+    */
 
   onMount(() => {
     let l = leaderboard()
