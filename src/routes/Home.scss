@@ -23,13 +23,13 @@ main.home {
     margin-bottom: 3em;
 
     @media (min-width: 799.3px) {
-        grid-template-areas: 'counters lobby'
-            'create lobby'
-            'featured leaderboard';
+        grid-template-areas: 'counters counters lobby lobby'
+            'create create lobby lobby'
+            '. featured featured .'
+            'leaderboard leaderboard leaderboard leaderboard';
 
 
-        grid-template-rows: 1em 50vh auto;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 2fr 1fr 1fr 2fr;
     }
 
 
@@ -81,6 +81,38 @@ main.home {
             color: $text-dark;
         }
 
+        .opponent {
+            display: flex;
+            flex-flow: column;
+
+            .buttons {
+                padding: 1em;
+                display: flex;
+                justify-content: center;
+                gap: 1em;
+
+                span {
+                    user-select: none;
+                    cursor: pointer;
+                    border-radius: 3px;
+                    padding: 1em;
+                    background: $primary;
+                    color: $text;
+                    border: 1px solid $primary-dark3;
+
+                    &.active {
+                        background: $accent;
+                        color: $text-light;
+                    }
+
+                    &:hover {
+                        background: $accent-light;
+                        color: $text-light;
+                    }
+                }
+            }
+        }
+
         .time-control {
             display: flex;
             flex-flow: row wrap;
@@ -97,7 +129,7 @@ main.home {
                 background: $primary-dark;
                 color: $text-light;
                 border-radius: 6px;
-                border: 3px solid $accent-light;
+                border: 1px solid $accent-light;
                 margin: 0.1em;
                 transition: cubic-bezier(0.075, 0.82, 0.165, 1) .4s;
 
@@ -131,11 +163,12 @@ main.home {
     }
 
 
+
     .lobby {
         display: flex;
         flex-flow: column;
 
-        max-height: 60vh;
+        max-height: 90vh;
 
         h2 {
             font-weight: normal;
@@ -194,20 +227,39 @@ main.home {
         }
     }
 
-
-    .leaderboard {
-
-
+    .featured {
+        justify-self: center;
         display: flex;
         flex-flow: column;
+        gap: 0.3em;
         justify-content: center;
 
-        border: 1px solid $primary-dark3;
-        padding: 0.4em;
+        background: $primary-dark2;
+        border: 2px solid $primary-dark3;
+        padding: 0.8em 2em;
         border-radius: 4px;
 
         h2 {
-            color: $primary-dark2;
+            color: $text-light;
+        }
+
+
+    }
+
+    .leaderboard {
+        justify-self: center;
+        display: flex;
+        flex-flow: column;
+        gap: 0.3em;
+        justify-content: center;
+
+        background: $primary-dark2;
+        border: 2px solid $primary-dark3;
+        padding: 0.8em 2em;
+        border-radius: 4px;
+
+        h2 {
+            color: $text-light;
         }
 
         .perfs {

@@ -131,20 +131,32 @@ const Lobby = (props: { me?: string }) => {
 }
 
 const Create = (props: { onCreate: (time_control: TimeControl) => void }) => {
+
+  const [tab, set_tab] = createSignal('play')
+
   return (<div class='create'>
+  <div class='opponent'>
+      <h2>Opponent</h2>
+      <div class='buttons'>
+        <span onClick={() => set_tab('play')} class={tab() === 'play' ? 'active': ''}>Play Against Computer</span>
+        <span onClick={() => set_tab('ai')} class={tab() === 'ai' ? 'active': ''}>Create a new game</span>
+      </div>
+    </div>
+    <div class='content'>
     <h2>Time Control</h2>
-    <div class='time-control'>
-      <span onClick={() => props.onCreate('threetwo')}>3+2</span>
-      <span onClick={() => props.onCreate('fivefour')}>5+4</span>
-      <span onClick={() => props.onCreate('tenzero')}>10+0</span>
-      <span onClick={() => props.onCreate('twentyzero')}>20+0</span>
+      <div class='time-control'>
+        <span onClick={() => props.onCreate('threetwo')}>3+2</span>
+        <span onClick={() => props.onCreate('fivefour')}>5+4</span>
+        <span onClick={() => props.onCreate('tenzero')}>10+0</span>
+        <span onClick={() => props.onCreate('twentyzero')}>20+0</span>
+      </div>
     </div>
   </div>)
 }
 
 const Featured = () => {
   return (<div class='featured'>
-    <h2>Featured Active Game</h2>
+    <h2>Featured Game</h2>
   </div>)
 }
 
