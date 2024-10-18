@@ -39,20 +39,20 @@ export abstract class Dispatch implements IDispatch {
         readonly room: string, 
         readonly peer: Peer) {}
 
-    async join() {
+    join() {
         RoomCrowds.Instance.connect(this.room, this.user.id)
         this.peer.subscribe(key_for_users_channel(this.user.id))
         this.peer.subscribe(key_for_room_channel(this.room))
 
         this.publish_channel(key_for_room_channel('lobby'), nb_connected_msg())
-        await this._join()
+        this._join().catch(log_websocket_error)
     }
 
-    async leave() {
+    leave() {
         RoomCrowds.Instance.disconnect(this.room, this.user.id)
         this.peer._subscriptions.forEach(_ => this.peer.unsubscribe(_))
         this.publish_channel(key_for_room_channel('lobby'), nb_connected_msg())
-        await this._leave()
+        this._leave().catch(log_websocket_error)
     }
 
     publish_peer(data: Message) {
@@ -105,3 +105,7 @@ export abstract class Dispatch implements IDispatch {
     abstract _leave(): Promise<void>
 }
 
+
+const log_websocket_error = (e: unknown) => {
+    console.error(`[Websocket Error] ` + e)
+}
