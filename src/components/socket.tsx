@@ -199,8 +199,7 @@ export const SocketProvider = (props: { children: JSX.Element }) => {
 
     socket.add_default_handlers({
         reload() {
-            socket.disconnect()
-            socket.connect()
+            location.reload()
         },
         crowd(ids: UserId[]) {
             set_crowd(ids)

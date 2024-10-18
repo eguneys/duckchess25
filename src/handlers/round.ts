@@ -119,10 +119,8 @@ async function finisher_out_of_time(game: Game) {
     return await finisher_other(game, GameStatus.Outoftime, winner)
 }
 
-async function finisher_other(prev: Game, status: GameStatus, winner?: Color) {
+async function finisher_other(prev: Game, status: GameStatus, winner?: Color): Promise<Events> {
     let events = []
-
-    console.log('resigned, winner is', winner)
 
     let game = game_finish(prev, status, winner)
 
@@ -370,7 +368,11 @@ export class Round extends Dispatch {
                     return Promise.reject("Not ai's turn")
                 }
 
-                return await ai_uci(makeFen(pov.game.duckchess.toSetup()))
+                try {
+                    return await ai_uci(makeFen(pov.game.duckchess.toSetup()))
+                } catch  {
+                    this.handle_and_publish(finisher_other(pov.game, GameStatus.Resign, pov.color))
+                }
             })
         } catch {
 
