@@ -7,6 +7,7 @@ import { revalidate } from "@solidjs/router";
 import { RoomCrowds } from "./nb_connecteds";
 import { Glicko_Rating, RatingDiffs, ratingOf } from "../glicko";
 import { game_repo_set_rating_diffs, updateRating, user_api_update_perfs, user_api_pair_with_perfs } from "../user_api";
+import { ai_uci } from "../ai_service";
 
 type Event = any
 type Events = Event[]
@@ -146,14 +147,42 @@ async function finisher_other(prev: Game, status: GameStatus, winner?: Color) {
     return events
 }
 
+async function play_by_ai(pov: Pov) {
+    let uci
+
+    try {
+        uci = await ai_uci(makeFen(pov.game.duckchess.toSetup()))
+    } catch {
+        return finisher_other(pov.game, GameStatus.Resign, pov.player.color)
+    }
+
+    let history = history_step_builder(pov.game.sans)
+    console.log(uci)
+
+    return apply_uci(pov.game, uci, history)
+}
+
 async function play_uci(pov: Pov, uci: string) {
 
     if (!game_playable_by(pov.game, pov.player.color)) {
         throw "Not playable by " + pov.player.color
     }
 
-    let events = []
+
     let history = history_step_builder(pov.game.sans)
+
+    let before_game = history.last()
+
+    if (before_game.turn !== pov.player.color) {
+        throw 'Not your turn'
+    }
+
+    return apply_uci(pov.game, uci, history)
+}
+
+async function apply_uci(game: Game, uci: string, history: PositionHistory) {
+
+    let events = []
     let move = parseUci(uci)
 
     if (!move) {
@@ -162,12 +191,8 @@ async function play_uci(pov: Pov, uci: string) {
 
     let before_game = history.last()
 
-    if (before_game.turn !== pov.player.color) {
-        throw 'Not your turn'
-    }
-
-    game_clock_update(pov.game)
-    let {wclock, bclock} = pov.game
+    game_clock_update(game)
+    let {wclock, bclock} = game
 
     let err = history.validate_and_append(move)
 
@@ -178,7 +203,7 @@ async function play_uci(pov: Pov, uci: string) {
 
     let result = history.computeGameResult()
 
-    let status = pov.game.status
+    let status = game.status
     let winner: Color | null = null
 
 
@@ -211,8 +236,8 @@ async function play_uci(pov: Pov, uci: string) {
 
     let san = makeSan(before_game, move)
 
-    pov.game.sans.push(san)
-    let sans = pov.game.sans.join(' ')
+    game.sans.push(san)
+    let sans = game.sans.join(' ')
 
     let cycle_length = last.cycle_length
     let rule50_ply = last.rule50_ply
@@ -225,7 +250,7 @@ async function play_uci(pov: Pov, uci: string) {
     let fen = makeFen(last.toSetup())
 
     await make_game_move({
-        id: pov.game.id,
+        id: game.id,
         status,
         cycle_length,
         rule50_ply,
@@ -238,13 +263,13 @@ async function play_uci(pov: Pov, uci: string) {
         epSquare,
         wclock,
         bclock,
-        winner: winner ? pov.game.players[winner].id : null
+        winner: winner ? game.players[winner].id : null
     })
     events.push({ t: 'move', d: { step: { uci, san, fen }, clock: { wclock, bclock } } })
 
 
     if (status !== GameStatus.Started) {
-        events.push(...(await finisher_other(pov.game, status, winner ?? undefined)))
+        events.push(...(await finisher_other(game, status, winner ?? undefined)))
     }
 
 
@@ -327,20 +352,39 @@ export class Round extends Dispatch {
             } break
             case 'move': {
                 await this.handle(pov => play_uci(pov, msg.d))
+
+
+
+                await this.try_ai_play()
             }
         }
+    }
+
+    async try_ai_play() {
+        await this.handle(async pov => {
+            if (pov.game.duckchess.turn === pov.opponent.color && pov.opponent.is_ai) {
+                return await play_by_ai(pov)
+            }
+            return []
+        })
+
+
     }
 
     publish_events(events: any[]) {
         events.forEach(_ => this.publish_room(_))
     }
 
-    _join() {
+    async _join() {
         let ids = RoomCrowds.Instance.get_crowd_ids(this.room)
         this.publish_room({ t: 'crowd', d: ids })
+
+
+        await this.try_ai_play()
+
     }
 
-    _leave() {
+    async _leave() {
         let ids = RoomCrowds.Instance.get_crowd_ids(this.room)
         this.publish_room({ t: 'crowd', d: ids })
     }

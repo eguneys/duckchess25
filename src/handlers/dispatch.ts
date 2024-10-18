@@ -39,20 +39,20 @@ export abstract class Dispatch implements IDispatch {
         readonly room: string, 
         readonly peer: Peer) {}
 
-    join() {
+    async join() {
         RoomCrowds.Instance.connect(this.room, this.user.id)
         this.peer.subscribe(key_for_users_channel(this.user.id))
         this.peer.subscribe(key_for_room_channel(this.room))
 
         this.publish_channel(key_for_room_channel('lobby'), nb_connected_msg())
-        this._join()
+        await this._join()
     }
 
-    leave() {
+    async leave() {
         RoomCrowds.Instance.disconnect(this.room, this.user.id)
         this.peer._subscriptions.forEach(_ => this.peer.unsubscribe(_))
         this.publish_channel(key_for_room_channel('lobby'), nb_connected_msg())
-        this._leave()
+        await this._leave()
     }
 
     publish_peer(data: Message) {
@@ -101,7 +101,7 @@ export abstract class Dispatch implements IDispatch {
      }
 
     abstract _message(message: Message): Promise<void>
-    abstract _join(): void
-    abstract _leave(): void
+    abstract _join(): Promise<void>
+    abstract _leave(): Promise<void>
 }
 
