@@ -611,10 +611,21 @@ export const DuckBoard = (props: { can_takeback: (_: boolean) => void, on_user_m
 
             batch(() => {
               with_duckchess((dc: DuckChess) => {
+
+                let promotion: 'queen' | undefined
+
+                if (dest.rank === '8' || dest.rank === '1') {
+                  if (dc.board.getRole(parseSquare(orig)) === 'pawn') {
+                    promotion = 'queen'
+                  }
+                }
+
                 let move = {
                   from: parseSquare(orig),
-                  to: parseSquare(posSquareName(dest))
+                  to: parseSquare(posSquareName(dest)),
+                  promotion
                 }
+
                 set_move_before_duck([move, dc.clone()])
                 dc.play(move)
                 return dc
