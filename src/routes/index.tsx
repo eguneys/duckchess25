@@ -69,8 +69,17 @@ export default function Home() {
       <Create/>
       <Featured/>
       <LeaderboardView/>
+      <Footer/>
     </main>
   );
+}
+
+const Footer = () => {
+  return (<>
+  <div class='footer'>
+      <A href='about'>About</A>
+  </div>
+  </>)
 }
 
 const Counters = (props: { ng: [number, number] }) => {

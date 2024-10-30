@@ -15,7 +15,8 @@ main.home {
     'create'
     'lobby'
     'featured'
-    'leaderboard';
+    'leaderboard'
+    'footer';
 
     column-gap: 1em;
     row-gap: 1em;
@@ -26,13 +27,17 @@ main.home {
         grid-template-areas: 'counters counters lobby lobby'
             'create create lobby lobby'
             '. featured featured .'
-            'leaderboard leaderboard leaderboard leaderboard';
+            'leaderboard leaderboard leaderboard leaderboard'
+            '. footer footer .';
 
 
         grid-template-columns: 2fr 1fr 1fr 2fr;
         grid-template-rows: 1em 80vh auto auto;
     }
 
+    .footer {
+        grid-area: footer;
+    }
 
     .counters {
         grid-area: counters;
