@@ -1,5 +1,10 @@
 {
   "name": "example-basic",
+  "description": "duckchess.org: the forever free, adless, and open source duck chess server",
+  "contributors": [{
+    "name": "Emre Guneyler",
+    "url": "https://eguneys.github.io/"
+  }],
   "type": "module",
   "scripts": {
     "dev": "vinxi dev --port=3000",
